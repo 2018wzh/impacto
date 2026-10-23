@@ -96,8 +96,8 @@ GLuint ShaderCompiler::Attach(GLuint program, GLenum shaderType,
          "Loading shader object (type {:d}) \"{:s}\"\n", shaderType, path);
 
   size_t sourceRawSz;
-#ifdef IMPACTO_ASTRA_EMU
-  auto resolved = Astra::ResolveResource(path);
+#ifdef IMPACTO_SHINKI_EMU
+  auto resolved = Shinki::ResolveResource(path);
   char* source = (char*)SDL_LoadFile(resolved.c_str(), &sourceRawSz);
 #else
   char* source = (char*)SDL_LoadFile(path, &sourceRawSz);

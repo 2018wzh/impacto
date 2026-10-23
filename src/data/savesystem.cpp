@@ -132,13 +132,13 @@ LoadStatus GetLoadStatus() {
 void MountSaveFile() { ExecuteLoader<SaveFileLoader>(); }
 void CheckSaveFile() { ExecuteLoader<SaveFileChecker>(); }
 void WriteSaveFile() {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!Implementation) throw std::runtime_error("Native CC save requested, but the CC save backend is not implemented");
 #endif
   ExecuteLoader<SaveFileWriter>();
 }
 void WriteQuickSaveFile() {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!Implementation) throw std::runtime_error("Native CC quick save requested, but the CC save backend is not implemented");
 #endif
   ExecuteLoader<QuickSaveFileWriter>();
@@ -165,14 +165,14 @@ void SaveMemory() {
 }
 
 void LoadEntry(SaveType type, int id) {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!Implementation) throw std::runtime_error("Native CC load requested, but the CC save/restore backend is not implemented");
 #endif
   if (Implementation) Implementation->LoadEntry(type, id);
 }
 
 void LoadMemoryNew(LoadProcess load) {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!Implementation) throw std::runtime_error("Native CC restore requested, but the CC save/restore backend is not implemented");
 #endif
   if (Implementation) Implementation->LoadMemoryNew(load);

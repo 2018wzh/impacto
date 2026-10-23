@@ -179,7 +179,7 @@ void AudioInit() {
     }
   }
 
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!Backend->Init()) throw std::runtime_error("Native OpenAL initialization failed");
 #else
   if (!Backend->Init()) return;

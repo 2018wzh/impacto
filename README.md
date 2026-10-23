@@ -30,21 +30,21 @@ If you're interested, [come join our Discord](https://discord.gg/rq4GGCh) to dis
 
 impacto source code as a whole is released under the liberal [ISC license](LICENSE). Some parts are based on or copied from third-party code under various licenses. Binary distributions or parts thereof may fall under more restrictive licensing terms. See [THIRDPARTY.md](THIRDPARTY.md) for details and attribution.
 
-## AstraEMU fork
+## ShinkiEMU fork
 
-This fork adds `IMPACTO_ASTRA_EMU` on native repair baseline
+This fork adds `IMPACTO_SHINKI_EMU` on native repair baseline
 `f12b4b799f1024eaca9a4e48e0371c2f3835576e`, derived from upstream
 `914fae7cbb9583f8aa231569a03aab27d8c042f8`. The baseline isolates DDS
 decoder state for concurrent image loads and fixes ownership of unallocated
 movie-audio planes and their pointer array. The shared core exports the current
-AstraEMU C ABI v3 directly: plugin `impacto`, engine family `mages`.
-`vendor/astra-emu-abi/include/astra_emu.h` is an unchanged byte copy of the
-cbindgen-generated header from AstraEngine
-`6d9d691dcc8f3d768e40b5be1d6f37366cca62d8`,
-`Emulator/Source/FamilyApi/astra-emu-abi/include/astra_emu.h`.
+ShinkiEMU C ABI v3 directly: plugin `impacto`, engine family `mages`.
+`vendor/shinki-emu-abi/include/shinki_emu.h` is an unchanged byte copy of the
+cbindgen-generated header from ShinkiEMU
+`cb8d9dd22d7d0ab129085b324c94d6dc81fa19e3`,
+`Source/FamilyApi/shinki-emu-abi/include/shinki_emu.h`.
 It is licensed `MIT OR Apache-2.0`; see `THIRDPARTY.md` for attribution and
 license texts. CMake uses this fixed copy by default. An explicit
-`ASTRA_EMU_ABI_INCLUDE_DIR` override supports local integration; no second
+`SHINKI_EMU_ABI_INCLUDE_DIR` override supports local integration; no second
 interface or generated-header edits are maintained.
 
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
@@ -75,22 +75,35 @@ Use the upstream `vcpkg.json` baseline and `vcpkg-configuration.json` overlay.
 The manifest includes SDL3 3.4.0, OpenAL Soft 1.25.1, FFmpeg 7.1.2, avcpp,
 Ogg/Vorbis/Opus, WebP, zlib, fmt, GLM, pugixml, utfcpp, concurrentqueue,
 readerwriterqueue, unordered-dense, boost-circular-buffer, toml11, FreeType,
-HarfBuzz and libass. CMake additionally fetches LibAtrac9 and magic_enum.
+HarfBuzz and libass. The explicit dependency preparation step also obtains
+pinned LibAtrac9 and magic_enum sources.
 Desktop OpenGL 3.3 and a working native audio device are required. ImGui,
 Vulkan and DirectX9 are excluded from this target.
 
-Open an **x64 Native Tools Command Prompt for Visual Studio**, set
-`VCPKG_ROOT` to a vcpkg checkout, and run from this fork's root. Use a short
-build directory; CMake installs the pinned manifest dependencies before building.
+From the ShinkiEMU checkout, open an **x64 Native Tools Command Prompt for
+Visual Studio** and run:
 
 ```bat
-set BUILD_ROOT=C:/b/impacto-astra
-cmake -S . -B "%BUILD_ROOT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DIMPACTO_ASTRA_EMU=ON -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake"
-cmake --build "%BUILD_ROOT%" --target impacto
-cmake --install "%BUILD_ROOT%" --prefix "%BUILD_ROOT%/package"
+set CARGO_BUILD_JOBS=4
+cargo xtask deps --target x86_64-pc-windows-msvc --core impacto
+cargo xtask build --target x86_64-pc-windows-msvc --core impacto --release
 ```
 
-The output is `astra_emu_impacto.dll`. Keep its native dependency DLLs beside
+The independent Cargo entry is `shinki/Cargo.toml` (`shinki-emu-impacto`).
+Its `build.rs` validates the host/target and prepared dependencies, calls the
+existing CMake `install` target with at most four jobs, and records the real
+DLL in `OUT_DIR/core-build.json` as `native-shared`. Native objects, installed
+Resources and dependency DLLs stay under `OUT_DIR/native`; the source checkout
+is never an install destination. The Rust rlib binds the native query table,
+while the distributable DLL exports `shinki_emu_query`.
+
+For a direct Cargo invocation, dependency preparation must supply `VCPKG_ROOT`,
+`SHINKI_EMU_VCPKG_INSTALLED`, `SHINKI_EMU_VCPKG_TRIPLET=x64-windows` and
+`SHINKI_EMU_NATIVE_DOWNLOADS` (containing `libatrac9` and `magic_enum`).
+`build.rs` runs offline: missing inputs fail with a dependency-preparation
+diagnostic. It never installs packages, fetches sources or runs Cargo.
+
+The output is `shinki_emu_impacto.dll`. Keep its native dependency DLLs beside
 it. `cmake --install` creates `Resources/profiles`, `Resources/resources` and
 `Resources/src/shaders` beside the DLL. On Windows an empty `resources_root`
 resolves only to that dynamic core's `Resources` directory. Source-tree
@@ -98,6 +111,13 @@ acceptance passes this checkout explicitly as `resources_root`; no development
 checkout is compiled into the runtime. Static or non-Windows hosts must provide
 an explicit resource root. ISC `LICENSE` and the upstream `THIRDPARTY.md`
 remain part of the distribution.
+
+The build manifest includes the ISC license, third-party notices and prepared
+vcpkg per-port copyright files. Binary publication additionally requires a
+review of bundled profile/resource permissions and the complete native DLL
+closure, plus the corresponding source and relinking materials required by
+the LGPL components listed in `THIRDPARTY.md`. Successful compilation alone
+does not clear those distribution requirements.
 
 ### Typed configuration and acceptance
 

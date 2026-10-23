@@ -321,7 +321,7 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
     ImpLog(LogLevel::Error, LogChannel::Video,
            "Error opening file, error: {:s}\n", ec.message());
     StreamPtr.reset();
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
     throw std::runtime_error("Native movie container open failed: " + ec.message());
 #else
     return;
@@ -333,7 +333,7 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
     ImpLog(LogLevel::Error, LogChannel::Video,
            "Error opening file, error: {:s}\n", ec.message());
     StreamPtr.reset();
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
     throw std::runtime_error("Native movie stream discovery failed: " + ec.message());
 #else
     return;
@@ -371,7 +371,7 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
                                   audioStreamId);
     AudioPlayer->InitConvertContext(AudioStream->CodecContext.raw());
   }
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!VideoStream) throw std::runtime_error("Native movie has no decodable video stream");
 #endif
   VideoClock = Clock();

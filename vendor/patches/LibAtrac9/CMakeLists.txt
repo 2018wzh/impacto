@@ -39,11 +39,11 @@ endif()
 
 add_library(atrac9::atrac9 ALIAS ${PROJECT_NAME})
 
-file(COPY C/src/libatrac9.h DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/include/libatrac9)
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/libatrac9/libatrac9.h)
+file(COPY C/src/libatrac9.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libatrac9)
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/libatrac9/libatrac9.h)
 
 # Include directories
-target_include_directories(${PROJECT_NAME} PUBLIC include)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 
 if(IPO_SUPPORTED)

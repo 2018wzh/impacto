@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-#include "astra_emu.h"
+#include "shinki_emu.h"
 #include "../impacto.h"
 #include "../game.h"
 #include "../log.h"
@@ -54,10 +54,10 @@
 namespace {
 using namespace Impacto;
 namespace fs = std::filesystem;
-AstraEmuBytes Bytes(std::string_view s) {
+ShinkiEmuBytes Bytes(std::string_view s) {
   return {reinterpret_cast<uint8_t const*>(s.data()), s.size()};
 }
-std::string Text(AstraEmuBytes b, size_t max = AstraEmuMAX_CONFIG_TEXT) {
+std::string Text(ShinkiEmuBytes b, size_t max = ShinkiEmuMAX_CONFIG_TEXT) {
   if (b.len > max || (b.len && !b.data))
     throw std::invalid_argument("Invalid text span");
   std::string s(b.len ? reinterpret_cast<char const*>(b.data) : "", b.len);
@@ -74,7 +74,7 @@ size_t Utf8Prefix(std::string_view text, size_t capacity) noexcept {
       --size;
   return size;
 }
-AstraEmuStatus Error(AstraEmuError* e, AstraEmuStatus status,
+ShinkiEmuStatus Error(ShinkiEmuError* e, ShinkiEmuStatus status,
                      std::string_view code, std::string_view message) noexcept {
   if (e) {
     *e = {};
@@ -87,16 +87,16 @@ AstraEmuStatus Error(AstraEmuError* e, AstraEmuStatus status,
   return status;
 }
 template <class F>
-AstraEmuStatus Guard(AstraEmuError* e, F&& f) noexcept {
+ShinkiEmuStatus Guard(ShinkiEmuError* e, F&& f) noexcept {
   if (e) *e = {};
   try {
     return f();
   } catch (std::invalid_argument const& ex) {
-    return Error(e, AstraEmuINVALID_ARGUMENT, "impacto.argument", ex.what());
+    return Error(e, ShinkiEmuINVALID_ARGUMENT, "impacto.argument", ex.what());
   } catch (std::exception const& ex) {
-    return Error(e, AstraEmuCORE_ERROR, "impacto.native", ex.what());
+    return Error(e, ShinkiEmuCORE_ERROR, "impacto.native", ex.what());
   } catch (...) {
-    return Error(e, AstraEmuPANICKED, "impacto.exception",
+    return Error(e, ShinkiEmuPANICKED, "impacto.exception",
                  "Unknown native exception");
   }
 }
@@ -142,15 +142,15 @@ class FrameRef {
 struct Session {
   ~Session();
   Settings settings;
-  AstraEmuHostServices host{};
+  ShinkiEmuHostServices host{};
   uint64_t epoch = 0;
   std::atomic<bool> cancelled{false}, paused{false}, suspended{false};
   std::thread worker;
   std::mutex mutex;
   std::condition_variable ready;
   bool initialized = false, done = false;
-  uint32_t status = AstraEmuSESSION_WAITING;
-  AstraEmuError failure{};
+  uint32_t status = ShinkiEmuSESSION_WAITING;
+  ShinkiEmuError failure{};
   Frame* frame = nullptr;
   // Pool ownership and independent CPU leases share only Frame's intrusive
   // count.
@@ -168,10 +168,10 @@ Session::~Session() {
 }
 thread_local Session* NativeSession = nullptr;
 thread_local bool Closing = false;
-AstraEmuDiagnostics Diagnostics{};
+ShinkiEmuDiagnostics Diagnostics{};
 void Emit(uint32_t level, std::string_view message) noexcept {
   if (!Diagnostics.emit) return;
-  AstraEmuLogRecord record{};
+  ShinkiEmuLogRecord record{};
   record.level = level;
   record.target = Bytes("impacto");
   record.message = Bytes(message);
@@ -179,10 +179,10 @@ void Emit(uint32_t level, std::string_view message) noexcept {
 }
 void SDLCALL NativeLog(void*, int, SDL_LogPriority priority,
                        char const* message) {
-  uint32_t level = priority >= SDL_LOG_PRIORITY_ERROR  ? AstraEmuLOG_ERROR
-                   : priority == SDL_LOG_PRIORITY_WARN ? AstraEmuLOG_WARN
-                   : priority == SDL_LOG_PRIORITY_INFO ? AstraEmuLOG_INFO
-                                                       : AstraEmuLOG_DEBUG;
+  uint32_t level = priority >= SDL_LOG_PRIORITY_ERROR  ? ShinkiEmuLOG_ERROR
+                   : priority == SDL_LOG_PRIORITY_WARN ? ShinkiEmuLOG_WARN
+                   : priority == SDL_LOG_PRIORITY_INFO ? ShinkiEmuLOG_INFO
+                                                       : ShinkiEmuLOG_DEBUG;
   Emit(level, message ? message : "");
 }
 std::string LuaString(std::string_view s) {
@@ -251,12 +251,12 @@ void ValidateAssets(Settings const& s) {
     throw std::invalid_argument(
         "save_root must be isolated from assets and core resources");
 }
-AstraEmuSurfaceInfo Surface(uint32_t w = 1920, uint32_t h = 1080) {
-  return {AstraEmuSURFACE_CPU,
-          AstraEmuPIXEL_RGBA8,
-          AstraEmuCOLOR_SRGB,
-          AstraEmuALPHA_IGNORED,
-          AstraEmuROWS_BOTTOM_UP,
+ShinkiEmuSurfaceInfo Surface(uint32_t w = 1920, uint32_t h = 1080) {
+  return {ShinkiEmuSURFACE_CPU,
+          ShinkiEmuPIXEL_RGBA8,
+          ShinkiEmuCOLOR_SRGB,
+          ShinkiEmuALPHA_IGNORED,
+          ShinkiEmuROWS_BOTTOM_UP,
           {1920, 1080},
           {w, h},
           static_cast<uint64_t>(w) * 4};
@@ -380,7 +380,7 @@ void ResetNativeObjects() {
 }
 void MountMovieOrder(Session& s) {
   if (s.settings.movie_order.empty()) {
-    Emit(AstraEmuLOG_WARN,
+    Emit(ShinkiEmuLOG_WARN,
          "No movie_order supplied. Native movie requests fail explicitly; "
          "directory ordering is not a movie-ID provider.");
     return;
@@ -423,7 +423,7 @@ void MountMovieOrder(Session& s) {
     throw std::runtime_error("Native CLS movie mapping mount failed");
 }
 void InitializeNative(Session& s) {
-  Astra::CheckCancellation();
+  Shinki::CheckCancellation();
   SDL_SetLogOutputFunction(NativeLog, nullptr);
   SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
   UserConfig::CommonSettings.LoggingToFile = false;
@@ -456,14 +456,14 @@ void InitializeNative(Session& s) {
   Profile::GameDefinitions.clear();
   Profile::GameDefinitions["cc"] = {
       .GameProfile = r + "/profiles/cc-steam/game.lua", .Name = "CHAOS;CHILD"};
-  Astra::CheckCancellation();
+  Shinki::CheckCancellation();
   Game::ShouldQuit = false;
   Game::Init();
-  Astra::CheckCancellation();
+  Shinki::CheckCancellation();
   Game::InitGameProfile();
   MountMovieOrder(s);
-  Astra::CheckCancellation();
-  Emit(AstraEmuLOG_WARN,
+  Shinki::CheckCancellation();
+  Emit(ShinkiEmuLOG_WARN,
        "CC upstream profile has no native save implementation; save/load "
        "acceptance is unavailable. Backup archives are not a patch "
        "compatibility guarantee.");
@@ -476,14 +476,14 @@ void Run(Session* s) noexcept {
       std::lock_guard lock(s->mutex);
       s->initialized = true;
       s->status =
-          s->suspended ? AstraEmuSESSION_PAUSED : AstraEmuSESSION_RUNNING;
+          s->suspended ? ShinkiEmuSESSION_PAUSED : ShinkiEmuSESSION_RUNNING;
     }
     s->ready.notify_all();
     auto last = std::chrono::steady_clock::now();
     std::vector<SDL_Event> events;
     bool wasPaused = false;
     while (!s->cancelled && !Game::ShouldQuit) {
-      Astra::CheckCancellation();
+      Shinki::CheckCancellation();
       bool paused = s->paused.load() || s->suspended.load();
       if (paused != wasPaused) {
         for (auto group : {Audio::ACG_BGM, Audio::ACG_SE, Audio::ACG_Voice,
@@ -500,7 +500,7 @@ void Run(Session* s) noexcept {
       {
         std::lock_guard lock(s->mutex);
         events.swap(s->events);
-        s->status = paused ? AstraEmuSESSION_PAUSED : AstraEmuSESSION_RUNNING;
+        s->status = paused ? ShinkiEmuSESSION_PAUSED : ShinkiEmuSESSION_RUNNING;
       }
       for (auto& event : events) {
         if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
@@ -525,45 +525,45 @@ void Run(Session* s) noexcept {
   } catch (Cancelled const&) {
   } catch (std::exception const& ex) {
     std::lock_guard lock(s->mutex);
-    Error(&s->failure, AstraEmuCORE_ERROR, "impacto.native", ex.what());
-    s->status = AstraEmuSESSION_FAILED;
-    Emit(AstraEmuLOG_ERROR, ex.what());
+    Error(&s->failure, ShinkiEmuCORE_ERROR, "impacto.native", ex.what());
+    s->status = ShinkiEmuSESSION_FAILED;
+    Emit(ShinkiEmuLOG_ERROR, ex.what());
   } catch (...) {
     std::lock_guard lock(s->mutex);
-    Error(&s->failure, AstraEmuPANICKED, "impacto.exception",
+    Error(&s->failure, ShinkiEmuPANICKED, "impacto.exception",
           "Unknown native worker exception");
-    s->status = AstraEmuSESSION_FAILED;
+    s->status = ShinkiEmuSESSION_FAILED;
   }
   Closing = true;
   try {
     ResetNativeObjects();
   } catch (std::exception const& ex) {
     std::lock_guard lock(s->mutex);
-    if (s->status != AstraEmuSESSION_FAILED)
-      Error(&s->failure, AstraEmuCORE_ERROR, "impacto.cleanup", ex.what());
-    s->status = AstraEmuSESSION_FAILED;
-    Emit(AstraEmuLOG_ERROR, ex.what());
+    if (s->status != ShinkiEmuSESSION_FAILED)
+      Error(&s->failure, ShinkiEmuCORE_ERROR, "impacto.cleanup", ex.what());
+    s->status = ShinkiEmuSESSION_FAILED;
+    Emit(ShinkiEmuLOG_ERROR, ex.what());
   } catch (...) {
     std::lock_guard lock(s->mutex);
-    if (s->status != AstraEmuSESSION_FAILED)
-      Error(&s->failure, AstraEmuPANICKED, "impacto.cleanup",
+    if (s->status != ShinkiEmuSESSION_FAILED)
+      Error(&s->failure, ShinkiEmuPANICKED, "impacto.cleanup",
             "Native cleanup failed");
-    s->status = AstraEmuSESSION_FAILED;
+    s->status = ShinkiEmuSESSION_FAILED;
   }
   Closing = false;
   NativeSession = nullptr;
   {
     std::lock_guard lock(s->mutex);
     s->done = true;
-    if (s->status != AstraEmuSESSION_FAILED)
-      s->status = AstraEmuSESSION_FINISHED;
+    if (s->status != ShinkiEmuSESSION_FAILED)
+      s->status = ShinkiEmuSESSION_FINISHED;
   }
   s->ready.notify_all();
 }
-AstraEmuConfigField Field(std::string_view id, std::string_view label,
+ShinkiEmuConfigField Field(std::string_view id, std::string_view label,
                           uint32_t kind, std::string_view text = "",
                           uint32_t flags = 0) {
-  AstraEmuConfigField f{};
+  ShinkiEmuConfigField f{};
   f.id = Bytes(id);
   f.label = Bytes(label);
   f.group = Bytes("impacto");
@@ -573,38 +573,38 @@ AstraEmuConfigField Field(std::string_view id, std::string_view label,
   f.flags = flags;
   return f;
 }
-AstraEmuStatus Initialize(AstraEmuDiagnostics const* d,
-                          AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus Initialize(ShinkiEmuDiagnostics const* d,
+                          ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!d || d->header.size != sizeof(*d) || d->header.version != 3 ||
         !d->emit)
       throw std::invalid_argument("Expected C ABI v3 diagnostic sink");
     std::lock_guard lock(GlobalMutex);
     if (Active)
-      return Error(e, AstraEmuINVALID_STATE, "impacto.active",
+      return Error(e, ShinkiEmuINVALID_STATE, "impacto.active",
                    "Cannot replace diagnostics during a session");
     Diagnostics = *d;
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-AstraEmuStatus Describe(AstraEmuDescriptor* out, AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus Describe(ShinkiEmuDescriptor* out, ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!out) throw std::invalid_argument("Null descriptor");
-    static AstraEmuBytes choices[] = {Bytes("cc")};
-    static AstraEmuBytes formats[] = {Bytes("mpk")};
+    static ShinkiEmuBytes choices[] = {Bytes("cc")};
+    static ShinkiEmuBytes formats[] = {Bytes("mpk")};
     static auto fields = [] {
-      std::array<AstraEmuConfigField, 6> f{
-          Field("profile", "Native game profile", AstraEmuVALUE_ENUM, "cc"),
+      std::array<ShinkiEmuConfigField, 6> f{
+          Field("profile", "Native game profile", ShinkiEmuVALUE_ENUM, "cc"),
           Field("assets_root", "CC USRDIR (empty: game/USRDIR)",
-                AstraEmuVALUE_STRING, "", AstraEmuCONFIG_FLAG_DIRECTORY_PATH),
+                ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
           Field("resources_root", "Resource root (empty: core/Resources)",
-                AstraEmuVALUE_STRING, "", AstraEmuCONFIG_FLAG_DIRECTORY_PATH),
-          Field("save_root", "Isolated AstraEMU save directory",
-                AstraEmuVALUE_STRING, "", AstraEmuCONFIG_FLAG_DIRECTORY_PATH),
+                ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
+          Field("save_root", "Isolated ShinkiEMU save directory",
+                ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
           Field("use_backup_archives", "Use script_bak/system_bak archives",
-                AstraEmuVALUE_BOOL),
+                ShinkiEmuVALUE_BOOL),
           Field("movie_order", "Verified movie ID order (native CLS)",
-                AstraEmuVALUE_STRING, "", AstraEmuCONFIG_FLAG_FILE_PATH)};
+                ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_FILE_PATH)};
       f[0].choices = choices;
       f[0].choice_labels = choices;
       f[0].choice_count = 1;
@@ -616,7 +616,7 @@ AstraEmuStatus Describe(AstraEmuDescriptor* out, AstraEmuError* e) noexcept {
             Bytes("mages"),
             Bytes("impacto"),
             Bytes("0.1.0"),
-            AstraEmuCAP_CPU_SURFACE,
+            ShinkiEmuCAP_CPU_SURFACE,
             formats,
             1,
             fields.data(),
@@ -624,21 +624,21 @@ AstraEmuStatus Describe(AstraEmuDescriptor* out, AstraEmuError* e) noexcept {
             Bytes("Impacto"),
             Bytes("MAGES."),
             {}};
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-AstraEmuStatus Probe(AstraEmuBytes game, AstraEmuProbeResult* out,
-                     AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus Probe(ShinkiEmuBytes game, ShinkiEmuProbeResult* out,
+                     ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!out) throw std::invalid_argument("Null probe result");
     *out = {};
     fs::path p = Absolute(Text(game));
     if (fs::is_regular_file(p)) p = p.parent_path();
     if (fs::is_directory(p / "USRDIR")) p /= "USRDIR";
     for (auto name : {"script.mpk", "system.mpk", "bg1.mpk", "voice.mpk"})
-      if (!IsMpk(p / name)) return AstraEmuNO_MATCH;
+      if (!IsMpk(p / name)) return ShinkiEmuNO_MATCH;
     *out = {Bytes("chaos-child"), Bytes("mpk"), 9900, 0};
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
 fs::path DefaultResourceRoot() {
@@ -666,14 +666,14 @@ fs::path DefaultResourceRoot() {
   throw std::invalid_argument("resources_root is required on this platform");
 #endif
 }
-AstraEmuStatus Open(AstraEmuOpenRequest const* r, AstraEmuOpenResult* out,
-                    AstraEmuError* e) noexcept {
+ShinkiEmuStatus Open(ShinkiEmuOpenRequest const* r, ShinkiEmuOpenResult* out,
+                    ShinkiEmuError* e) noexcept {
   if (out) *out = {};
-  return Guard(e, [&]() -> AstraEmuStatus {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!r || !out || r->header.size != sizeof(*r) || r->header.version != 3 ||
         !r->session_epoch || r->host.header.size != sizeof(r->host) ||
         r->host.header.version != 3 || !r->host.cancellation.is_cancelled ||
-        r->configuration_count > AstraEmuMAX_CONFIG_FIELDS ||
+        r->configuration_count > ShinkiEmuMAX_CONFIG_FIELDS ||
         (r->configuration_count && !r->configuration) ||
         r->render_extent.width || r->render_extent.height || r->module_owner)
       throw std::invalid_argument("Invalid ABI v3 open request");
@@ -695,14 +695,14 @@ AstraEmuStatus Open(AstraEmuOpenRequest const* r, AstraEmuOpenResult* out,
         throw std::invalid_argument("Duplicate or reserved config entry");
       auto const& v = entry.value;
       if (id == "use_backup_archives") {
-        if (v.kind != AstraEmuVALUE_BOOL || (v.integer != 0 && v.integer != 1))
+        if (v.kind != ShinkiEmuVALUE_BOOL || (v.integer != 0 && v.integer != 1))
           throw std::invalid_argument("Expected boolean use_backup_archives");
         s->settings.backups = v.integer != 0;
       } else if (id == "profile") {
-        if (v.kind != AstraEmuVALUE_ENUM || Text(v.text) != "cc")
+        if (v.kind != ShinkiEmuVALUE_ENUM || Text(v.text) != "cc")
           throw std::invalid_argument("Only native profile=cc is supported");
       } else {
-        if (v.kind != AstraEmuVALUE_STRING)
+        if (v.kind != ShinkiEmuVALUE_STRING)
           throw std::invalid_argument("Expected string path configuration");
         auto text = Text(v.text);
         if (id == "assets_root") {
@@ -727,11 +727,11 @@ AstraEmuStatus Open(AstraEmuOpenRequest const* r, AstraEmuOpenResult* out,
     fs::create_directories(s->settings.saves);
     if (s->host.cancellation.is_cancelled(s->host.cancellation.context,
                                           s->epoch))
-      return Error(e, AstraEmuCANCELLED, "impacto.cancelled", "Open cancelled");
+      return Error(e, ShinkiEmuCANCELLED, "impacto.cancelled", "Open cancelled");
     {
       std::lock_guard lock(GlobalMutex);
       if (Active)
-        return Error(e, AstraEmuINVALID_STATE, "impacto.active",
+        return Error(e, ShinkiEmuINVALID_STATE, "impacto.active",
                      "Only one native Impacto session can run");
       Active = s.get();
     }
@@ -746,15 +746,15 @@ AstraEmuStatus Open(AstraEmuOpenRequest const* r, AstraEmuOpenResult* out,
                        s->host.cancellation.context, s->epoch)) {
       s->cancelled = true;
       s->worker.join();
-      if (s->status == AstraEmuSESSION_FAILED) {
+      if (s->status == ShinkiEmuSESSION_FAILED) {
         if (e) *e = s->failure;
-        return AstraEmuCORE_ERROR;
+        return ShinkiEmuCORE_ERROR;
       }
-      return Error(e, AstraEmuCANCELLED, "impacto.cancelled", "Open cancelled");
+      return Error(e, ShinkiEmuCANCELLED, "impacto.cancelled", "Open cancelled");
     }
     *out = {s.get(), 1, 1, Surface()};
     s.release();
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
 SDL_Scancode Scan(std::string const& key) {
@@ -809,9 +809,9 @@ SDL_Scancode Scan(std::string const& key) {
   }
   return SDL_SCANCODE_UNKNOWN;
 }
-AstraEmuStatus InputEvents(AstraEmuSession handle, AstraEmuInputEvent const* in,
-                           size_t count, AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus InputEvents(ShinkiEmuSession handle, ShinkiEmuInputEvent const* in,
+                           size_t count, ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!handle || (count && !in) || count > 4096)
       throw std::invalid_argument("Invalid input batch");
     auto* s = static_cast<Session*>(handle);
@@ -825,46 +825,46 @@ AstraEmuStatus InputEvents(AstraEmuSession handle, AstraEmuInputEvent const* in,
       if (input.pressed > 1 || input.repeat > 1 || !std::isfinite(input.x) ||
           !std::isfinite(input.y))
         throw std::invalid_argument("Invalid input value");
-      if (input.kind != AstraEmuINPUT_KEY &&
-          input.kind != AstraEmuINPUT_WINDOW &&
+      if (input.kind != ShinkiEmuINPUT_KEY &&
+          input.kind != ShinkiEmuINPUT_WINDOW &&
           (input.displayed.session_epoch != s->epoch ||
            input.displayed.output_epoch != 1))
-        return Error(e, AstraEmuSTALE_CONTEXT, "impacto.frame_context",
+        return Error(e, ShinkiEmuSTALE_CONTEXT, "impacto.frame_context",
                      "Input refers to another session or output");
       switch (input.kind) {
-        case AstraEmuINPUT_KEY:
+        case ShinkiEmuINPUT_KEY:
           event.type = input.pressed ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
           event.key.scancode = Scan(Text(input.physical_key));
           if (event.key.scancode == SDL_SCANCODE_UNKNOWN)
-            return Error(e, AstraEmuUNSUPPORTED, "impacto.key",
+            return Error(e, ShinkiEmuUNSUPPORTED, "impacto.key",
                          "Unsupported physical key");
           event.key.down = input.pressed != 0;
           event.key.repeat = input.repeat != 0;
           break;
-        case AstraEmuINPUT_POINTER_MOVE:
+        case ShinkiEmuINPUT_POINTER_MOVE:
           event.type = SDL_EVENT_MOUSE_MOTION;
           event.motion.x = static_cast<float>(input.x);
           event.motion.y = static_cast<float>(input.y);
           break;
-        case AstraEmuINPUT_POINTER_BUTTON:
+        case ShinkiEmuINPUT_POINTER_BUTTON:
           if (input.button < 1 || input.button > 3)
             throw std::invalid_argument("Invalid pointer button");
           event.type = input.pressed ? SDL_EVENT_MOUSE_BUTTON_DOWN
                                      : SDL_EVENT_MOUSE_BUTTON_UP;
           event.button.button =
-              input.button == AstraEmuBUTTON_PRIMARY     ? SDL_BUTTON_LEFT
-              : input.button == AstraEmuBUTTON_SECONDARY ? SDL_BUTTON_RIGHT
+              input.button == ShinkiEmuBUTTON_PRIMARY     ? SDL_BUTTON_LEFT
+              : input.button == ShinkiEmuBUTTON_SECONDARY ? SDL_BUTTON_RIGHT
                                                          : SDL_BUTTON_MIDDLE;
           event.button.down = input.pressed != 0;
           event.button.x = static_cast<float>(input.x);
           event.button.y = static_cast<float>(input.y);
           break;
-        case AstraEmuINPUT_WHEEL:
+        case ShinkiEmuINPUT_WHEEL:
           event.type = SDL_EVENT_MOUSE_WHEEL;
           event.wheel.x = static_cast<float>(input.x);
           event.wheel.y = static_cast<float>(input.y);
           break;
-        case AstraEmuINPUT_WINDOW:
+        case ShinkiEmuINPUT_WINDOW:
           if (input.window.focused > 1 || input.window.suspended > 1 ||
               !std::isfinite(input.window.scale_factor) ||
               input.window.scale_factor <= 0)
@@ -880,58 +880,58 @@ AstraEmuStatus InputEvents(AstraEmuSession handle, AstraEmuInputEvent const* in,
     }
     std::lock_guard lock(s->mutex);
     if (s->done)
-      return Error(e, AstraEmuINVALID_STATE, "impacto.finished",
+      return Error(e, ShinkiEmuINVALID_STATE, "impacto.finished",
                    "Native session has stopped");
     if (s->events.size() + converted.size() > 8192)
-      return Error(e, AstraEmuCAPACITY, "impacto.input_capacity",
+      return Error(e, ShinkiEmuCAPACITY, "impacto.input_capacity",
                    "Native input queue is full");
     s->events.insert(s->events.end(), converted.begin(), converted.end());
     if (suspension) s->suspended = *suspension;
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-AstraEmuStatus Control(AstraEmuSession handle, uint32_t command,
-                       AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus Control(ShinkiEmuSession handle, uint32_t command,
+                       ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!handle) throw std::invalid_argument("Null session");
     auto* s = static_cast<Session*>(handle);
     std::lock_guard lock(s->mutex);
     if (s->done)
-      return Error(e, AstraEmuINVALID_STATE, "impacto.finished",
+      return Error(e, ShinkiEmuINVALID_STATE, "impacto.finished",
                    "Native session has stopped");
-    if (command == AstraEmuCONTROL_PAUSE)
+    if (command == ShinkiEmuCONTROL_PAUSE)
       s->paused = true;
-    else if (command == AstraEmuCONTROL_RESUME)
+    else if (command == ShinkiEmuCONTROL_RESUME)
       s->paused = false;
     else
-      return Error(e, AstraEmuUNSUPPORTED, "impacto.control",
+      return Error(e, ShinkiEmuUNSUPPORTED, "impacto.control",
                    "Unsupported native control");
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-AstraEmuStatus State(AstraEmuSession handle, AstraEmuSessionState* out,
-                     AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus State(ShinkiEmuSession handle, ShinkiEmuSessionState* out,
+                     ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!handle || !out) throw std::invalid_argument("Null session state");
     auto* s = static_cast<Session*>(handle);
     std::lock_guard lock(s->mutex);
     *out = {s->status, 0, 1, 1, s->failure};
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
 void ReleaseFrame(void* owner) noexcept {
   DropFrame(static_cast<Frame*>(owner));
 }
-AstraEmuStatus GetFrame(AstraEmuSession handle, AstraEmuFrameIdentity previous,
-                        AstraEmuFrameSurface* out, AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus GetFrame(ShinkiEmuSession handle, ShinkiEmuFrameIdentity previous,
+                        ShinkiEmuFrameSurface* out, ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!handle || !out) throw std::invalid_argument("Null frame request");
     *out = {};
     auto* s = static_cast<Session*>(handle);
     std::lock_guard lock(s->mutex);
     if (!s->frame) {
-      out->state = AstraEmuFRAME_PENDING;
-      return AstraEmuOK;
+      out->state = ShinkiEmuFRAME_PENDING;
+      return ShinkiEmuOK;
     }
     auto const& f = s->frame;
     out->identity = {s->epoch, 1, f->generation};
@@ -939,36 +939,36 @@ AstraEmuStatus GetFrame(AstraEmuSession handle, AstraEmuFrameIdentity previous,
     out->info = Surface(f->width, f->height);
     if (previous.session_epoch == s->epoch && previous.output_epoch == 1 &&
         previous.generation == f->generation) {
-      out->state = AstraEmuFRAME_UNCHANGED;
-      return AstraEmuOK;
+      out->state = ShinkiEmuFRAME_UNCHANGED;
+      return ShinkiEmuOK;
     }
     RetainFrame(f);
-    out->state = AstraEmuFRAME_READY;
+    out->state = ShinkiEmuFRAME_READY;
     out->cpu = {{f->pixels.data(), f->pixels.size()}, f, ReleaseFrame};
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-void Cancel(AstraEmuSession handle) noexcept {
+void Cancel(ShinkiEmuSession handle) noexcept {
   if (handle) static_cast<Session*>(handle)->cancelled = true;
 }
-AstraEmuStatus Close(AstraEmuSession handle, AstraEmuError* e) noexcept {
-  return Guard(e, [&]() -> AstraEmuStatus {
+ShinkiEmuStatus Close(ShinkiEmuSession handle, ShinkiEmuError* e) noexcept {
+  return Guard(e, [&]() -> ShinkiEmuStatus {
     if (!handle) throw std::invalid_argument("Null session");
     std::unique_ptr<Session> s(static_cast<Session*>(handle));
     s->cancelled = true;
     if (s->worker.joinable()) s->worker.join();
-    if (s->status == AstraEmuSESSION_FAILED) {
+    if (s->status == ShinkiEmuSESSION_FAILED) {
       if (e) *e = s->failure;
-      return AstraEmuCORE_ERROR;
+      return ShinkiEmuCORE_ERROR;
     }
-    return AstraEmuOK;
+    return ShinkiEmuOK;
   });
 }
-AstraEmuStatus Extension(AstraEmuBytes, uint32_t, void const** out) noexcept {
+ShinkiEmuStatus Extension(ShinkiEmuBytes, uint32_t, void const** out) noexcept {
   if (out) *out = nullptr;
-  return AstraEmuUNSUPPORTED;
+  return ShinkiEmuUNSUPPORTED;
 }
-AstraEmuCoreApi const Api = {{sizeof(AstraEmuCoreApi), 3},
+ShinkiEmuCoreApi const Api = {{sizeof(ShinkiEmuCoreApi), 3},
                              Initialize,
                              Describe,
                              Probe,
@@ -981,7 +981,7 @@ AstraEmuCoreApi const Api = {{sizeof(AstraEmuCoreApi), 3},
                              Close,
                              Extension};
 }  // namespace
-namespace Impacto::Astra {
+namespace Impacto::Shinki {
 void CheckCancellation() {
   if (Closing) return;
   if (NativeSession &&
@@ -1062,17 +1062,21 @@ void CaptureFrame(int width, int height) {
     s.frame = target;
   }
 }
-}  // namespace Impacto::Astra
+}  // namespace Impacto::Shinki
 #ifdef _WIN32
-#define ASTRA_EXPORT extern "C" __declspec(dllexport)
+#define SHINKI_EMU_EXPORT extern "C" __declspec(dllexport)
 #else
-#define ASTRA_EXPORT extern "C" __attribute__((visibility("default")))
+#define SHINKI_EMU_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
-ASTRA_EXPORT AstraEmuStatus
-astra_emu_query(uint32_t version, AstraEmuCoreApi const** out) noexcept {
-  if (!out) return AstraEmuINVALID_ARGUMENT;
+SHINKI_EMU_EXPORT ShinkiEmuStatus
+shinki_emu_impacto_query(uint32_t version, ShinkiEmuCoreApi const** out) noexcept {
+  if (!out) return ShinkiEmuINVALID_ARGUMENT;
   *out = nullptr;
-  if (version != AstraEmuABI_VERSION) return AstraEmuUNSUPPORTED;
+  if (version != ShinkiEmuABI_VERSION) return ShinkiEmuUNSUPPORTED;
   *out = &Api;
-  return AstraEmuOK;
+  return ShinkiEmuOK;
+}
+SHINKI_EMU_EXPORT ShinkiEmuStatus
+shinki_emu_query(uint32_t version, ShinkiEmuCoreApi const** out) noexcept {
+  return shinki_emu_impacto_query(version, out);
 }

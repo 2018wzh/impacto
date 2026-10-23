@@ -43,7 +43,7 @@ VmInstruction(InstPlayMovie) {
     if (err != IoError_OK) {
       ImpLog(LogLevel::Error, LogChannel::Video,
              "Failed to open movie for playback: IO error {}\n", err);
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
       throw std::runtime_error("Native CC movie ID is unavailable; supply a verified movie_order and matching media");
 #else
       return;
@@ -125,7 +125,7 @@ static void PlayMovieOldCommon(Sc3VmThread* thread, uint8_t instType) {
     if (err != IoError_OK) {
       ImpLog(LogLevel::Error, LogChannel::Video,
              "Failed to open movie for playback: IO error {}\n", err);
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
       throw std::runtime_error("Native CC movie ID is unavailable; supply a verified movie_order and matching media");
 #else
       return;

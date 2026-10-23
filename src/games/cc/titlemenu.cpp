@@ -35,7 +35,7 @@ using namespace Impacto::Vm::Interface;
 using namespace Impacto::UI::Widgets::CC;
 
 void TitleMenu::MenuButtonOnClick(Widgets::Button* target) {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if ((target->Id == 10 || target->Id == 11) && !SaveSystem::Implementation) {
     throw std::runtime_error("Native CC load requested, but the CC save/restore backend is not implemented");
   }

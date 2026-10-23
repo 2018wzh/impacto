@@ -45,7 +45,7 @@ static void RunLuaScriptBuffer(std::span<char const> buffer) {
   if (luaL_loadbuffer(LuaState, buffer.data(), buffer.size(), buffer.data())) {
     ImpLog(LogLevel::Fatal, LogChannel::Profile,
            "Lua profile compile error: {:s}\n", lua_tostring(LuaState, -1));
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
     throw std::runtime_error(lua_tostring(LuaState, -1));
 #else
     lua_close(LuaState);
@@ -55,7 +55,7 @@ static void RunLuaScriptBuffer(std::span<char const> buffer) {
   if (lua_pcall(LuaState, 0, 0, 0)) {
     ImpLog(LogLevel::Fatal, LogChannel::Profile,
            "Lua profile execute error: {:s}\n", lua_tostring(LuaState, -1));
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
     throw std::runtime_error(lua_tostring(LuaState, -1));
 #else
     lua_close(LuaState);
@@ -70,7 +70,7 @@ static void RunLuaScript(const char* path) {
   if (luaL_dofile(LuaState, path)) {
     ImpLog(LogLevel::Fatal, LogChannel::Profile,
            "Lua profile compile error: {:s}\n", lua_tostring(LuaState, -1));
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
     throw std::runtime_error(lua_tostring(LuaState, -1));
 #else
     exit(1);
@@ -318,8 +318,8 @@ void ConfigureGameProfile() {
     }
     RunLuaScript(patchProfilePathItr->second.c_str());
   }
-#ifdef IMPACTO_ASTRA_EMU
-  Astra::ConfigureProfile();
+#ifdef IMPACTO_SHINKI_EMU
+  Shinki::ConfigureProfile();
 #endif
   ImpLog(LogLevel::Info, LogChannel::Profile,
          "Profile for {:s} loaded successfully.\n",

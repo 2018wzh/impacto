@@ -1,0 +1,19 @@
+[package]
+name = "shinki-emu-impacto"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "ISC"
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+shinki-emu-abi = { git = "https://github.com/Project-Shinkirou/ShinkiEMU", rev = "035155c78761768bc088169a4eca982f82e9d577" }
+
+[build-dependencies]
+shinki-emu-build = { git = "https://github.com/Project-Shinkirou/ShinkiEMU", rev = "035155c78761768bc088169a4eca982f82e9d577" }
+
+[workspace]

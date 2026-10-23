@@ -208,8 +208,8 @@ void InitGameProfile() {
 }
 
 void Shutdown() {
-#ifdef IMPACTO_ASTRA_EMU
-  if (!Astra::IsClosing()) Astra::NativeExit(1);
+#ifdef IMPACTO_SHINKI_EMU
+  if (!Shinki::IsClosing()) Shinki::NativeExit(1);
 #endif
   if (+Profile::Game::GameFeatures & +GameFeature::Audio) {
     Audio::AudioShutdown();

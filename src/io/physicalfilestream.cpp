@@ -68,8 +68,8 @@ std::ios_base::openmode PhysicalFileStream::PrepareFileOpenMode(
 
 IoError PhysicalFileStream::Create(std::string const& fileName, Stream** out,
                                    CreateFlags flags) {
-#ifdef IMPACTO_ASTRA_EMU
-  PhysicalFileStream* result = new PhysicalFileStream(Astra::ResolveResource(fileName), flags);
+#ifdef IMPACTO_SHINKI_EMU
+  PhysicalFileStream* result = new PhysicalFileStream(Shinki::ResolveResource(fileName), flags);
 #else
   PhysicalFileStream* result = new PhysicalFileStream(fileName, flags);
 #endif

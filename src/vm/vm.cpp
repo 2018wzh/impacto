@@ -177,8 +177,8 @@ void Init() {
                       : Profile::Vm::StartScript - 1);
   }
   if (res) {
-#ifdef IMPACTO_ASTRA_EMU
-    Astra::CheckCancellation();
+#ifdef IMPACTO_SHINKI_EMU
+    Shinki::CheckCancellation();
 #endif
     Sc3VmThread* startupThd = CreateThread(0);
     startupThd->GroupId = 0;
@@ -186,7 +186,7 @@ void Init() {
     startupThd->IpOffset =
         ScriptGetLabelAddress(Profile::Vm::StartScriptBuffer, 0);
   }
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   if (!res) {
     throw std::runtime_error("Native CC startup script could not be loaded");
   }
@@ -478,8 +478,8 @@ void RunThread(Sc3VmThread* thread, float dt) {
 
   BlockCurrentScriptThread = 0;
   do {
-#ifdef IMPACTO_ASTRA_EMU
-    Astra::CheckCancellation();
+#ifdef IMPACTO_SHINKI_EMU
+    Shinki::CheckCancellation();
 #endif
     auto scriptIp = thread->IpOffset;
 #ifndef IMPACTO_DISABLE_IMGUI
@@ -542,8 +542,8 @@ void RunThread(Sc3VmThread* thread, float dt) {
                  "Call stack empty, attempting instruction skip (will most "
                  "likely result in a hang).\n");
           while (*(thread->GetIp()) != 0xFE) {
-#ifdef IMPACTO_ASTRA_EMU
-            Astra::CheckCancellation();
+#ifdef IMPACTO_SHINKI_EMU
+            Shinki::CheckCancellation();
 #endif
             thread->IpOffset++;
           }

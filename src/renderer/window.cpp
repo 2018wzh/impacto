@@ -345,7 +345,7 @@ RectF BaseWindow::GetScaledViewport() {
 }
 
 bool BaseWindow::CreateSDLWindow(SDL_WindowFlags flags) {
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   flags |= SDL_WINDOW_HIDDEN;
 #endif
   auto const& config = UserConfig::CommonSettings;
@@ -378,7 +378,7 @@ void BaseWindow::ApplyWindowSettings() {
   auto const& config = UserConfig::CommonSettings;
   WindowWidth = config.ResolutionWidth;
   WindowHeight = config.ResolutionHeight;
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   SDL_SetWindowSize(SDLWindow, 1920, 1080);
   WindowWidth = 1920;
   WindowHeight = 1080;

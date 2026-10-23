@@ -302,7 +302,7 @@ void GLWindow::Update() {
       glViewport(0, 0, WindowWidth, WindowHeight);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-#ifndef IMPACTO_ASTRA_EMU
+#ifndef IMPACTO_SHINKI_EMU
       SDL_GL_SwapWindow(SDLWindow);
 #endif
     }
@@ -350,16 +350,16 @@ void GLWindow::Draw() {
   }
 #endif
 
-#ifdef IMPACTO_ASTRA_EMU
-  Astra::CaptureFrame(WindowWidth, WindowHeight);
+#ifdef IMPACTO_SHINKI_EMU
+  Shinki::CaptureFrame(WindowWidth, WindowHeight);
 #else
   SDL_GL_SwapWindow(SDLWindow);
 #endif
 }
 
 void GLWindow::Shutdown() {
-#ifdef IMPACTO_ASTRA_EMU
-  if (!Astra::IsClosing()) Astra::NativeExit(1);
+#ifdef IMPACTO_SHINKI_EMU
+  if (!Shinki::IsClosing()) Shinki::NativeExit(1);
 #endif
   if (GLContext) {
     CleanFBOs();
@@ -370,7 +370,7 @@ void GLWindow::Shutdown() {
   SDLWindow = nullptr;
   IsInit = false;
   SDL_Quit();
-#ifndef IMPACTO_ASTRA_EMU
+#ifndef IMPACTO_SHINKI_EMU
   exit(0);
 #endif
 }

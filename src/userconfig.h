@@ -49,14 +49,14 @@ struct Config {
   int ResolutionWidth = 1280;
   int ResolutionHeight = 720;
 
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   std::string LogFile;
 #else
   std::string LogFile = GetDefaultLogFile();
 #endif
   LogLevel LogLvl = LogLevel::Warning;
   LogChannel LogChannels = LogChannel::All;
-#ifdef IMPACTO_ASTRA_EMU
+#ifdef IMPACTO_SHINKI_EMU
   bool LoggingToConsole = true;
   bool LoggingToFile = false;
 #else
