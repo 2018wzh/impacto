@@ -13,9 +13,12 @@ MosaicEffect::MosaicEffect()
   CaptureSprite.Sheet.IsScreenCap = true;
 }
 
-MosaicEffect::~MosaicEffect() {
-  if (Renderer) Renderer->FreeTexture(CaptureSprite.Sheet.Texture);
+void MosaicEffect::Reset() {
+  if (Renderer && CaptureSprite.Sheet.Texture) Renderer->FreeTexture(CaptureSprite.Sheet.Texture);
+  CaptureSprite.Sheet.Texture = 0;
 }
+
+MosaicEffect::~MosaicEffect() { Reset(); }
 
 void MosaicEffect::Init() {
   if (CaptureSprite.Sheet.Texture != 0) return;

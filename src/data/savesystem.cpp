@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <ctime>
 #include <ranges>
+#include <stdexcept>
 
 namespace Impacto {
 namespace SaveSystem {
@@ -130,8 +131,18 @@ LoadStatus GetLoadStatus() {
 
 void MountSaveFile() { ExecuteLoader<SaveFileLoader>(); }
 void CheckSaveFile() { ExecuteLoader<SaveFileChecker>(); }
-void WriteSaveFile() { ExecuteLoader<SaveFileWriter>(); }
-void WriteQuickSaveFile() { ExecuteLoader<QuickSaveFileWriter>(); }
+void WriteSaveFile() {
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Implementation) throw std::runtime_error("Native CC save requested, but the CC save backend is not implemented");
+#endif
+  ExecuteLoader<SaveFileWriter>();
+}
+void WriteQuickSaveFile() {
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Implementation) throw std::runtime_error("Native CC quick save requested, but the CC save backend is not implemented");
+#endif
+  ExecuteLoader<QuickSaveFileWriter>();
+}
 
 void InitializeSystemData() {
   if (Implementation) Implementation->InitializeSystemData();
@@ -154,10 +165,16 @@ void SaveMemory() {
 }
 
 void LoadEntry(SaveType type, int id) {
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Implementation) throw std::runtime_error("Native CC load requested, but the CC save/restore backend is not implemented");
+#endif
   if (Implementation) Implementation->LoadEntry(type, id);
 }
 
 void LoadMemoryNew(LoadProcess load) {
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Implementation) throw std::runtime_error("Native CC restore requested, but the CC save/restore backend is not implemented");
+#endif
   if (Implementation) Implementation->LoadMemoryNew(load);
 }
 

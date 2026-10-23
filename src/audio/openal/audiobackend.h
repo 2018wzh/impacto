@@ -2,6 +2,7 @@
 
 #include "../audiobackend.h"
 #include "audiocommon.h"
+#include <atomic>
 
 namespace Impacto {
 namespace Audio {
@@ -9,7 +10,7 @@ namespace OpenAL {
 
 class AudioBackend : public Audio::AudioBackend {
  private:
-  bool DeviceChanged = false;
+  std::atomic<bool> DeviceChanged{false};
   void InitAlextFunctions();
 
  public:

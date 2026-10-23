@@ -1013,6 +1013,18 @@ https://github.com/ToruNiina/toml11
 
 See below for license text (MIT).
 
+## AstraEngine astra-emu-abi
+
+The unchanged cbindgen-generated C ABI v3 header is included at
+`vendor/astra-emu-abi/include/astra_emu.h`.
+
+Source: https://github.com/2018wzh/AstraEngine/blob/6d9d691dcc8f3d768e40b5be1d6f37366cca62d8/Emulator/Source/FamilyApi/astra-emu-abi/include/astra_emu.h
+
+Revision: `6d9d691dcc8f3d768e40b5be1d6f37366cca62d8`.
+Attribution: AstraEngine astra-emu-abi contributors.
+License: MIT OR Apache-2.0, as declared by the source crate.
+Both license texts appear below.
+
 # Generic license texts
 
 ## 2-clause BSD license

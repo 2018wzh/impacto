@@ -48,6 +48,12 @@ static ankerl::unordered_dense::map<std::string, ArchiveList, string_hash,
     Mounts;
 static std::shared_mutex Lock;
 
+void VfsShutdown() {
+  std::unique_lock lock{Lock};
+  Mounts.clear();
+  Archivers.clear();
+}
+
 static IoError MountInternal(std::string const& mountpoint, Stream* stream,
                              bool invertMountOrder = false,
                              VfsArchiveFactoryFn hintArchiver = nullptr) {

@@ -96,7 +96,12 @@ GLuint ShaderCompiler::Attach(GLuint program, GLenum shaderType,
          "Loading shader object (type {:d}) \"{:s}\"\n", shaderType, path);
 
   size_t sourceRawSz;
+#ifdef IMPACTO_ASTRA_EMU
+  auto resolved = Astra::ResolveResource(path);
+  char* source = (char*)SDL_LoadFile(resolved.c_str(), &sourceRawSz);
+#else
   char* source = (char*)SDL_LoadFile(path, &sourceRawSz);
+#endif
   if (!source) {
     ImpLog(LogLevel::Debug, LogChannel::Render,
            "Failed to read shader source file\n");

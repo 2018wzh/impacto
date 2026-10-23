@@ -77,18 +77,21 @@ void LoadFonts() {
       case EdgeDetectedSingleSheet: {
         const SpriteSheet sheet = EnsureGetMember<SpriteSheet>("Sheet");
         const glm::ivec2 gridSize = EnsureGetMember<glm::ivec2>("GridSize");
+        const glm::vec2 cellSize =
+            TryGetMember<glm::vec2>("CellSize").value_or(
+                sheet.GetDimensions() / static_cast<glm::vec2>(gridSize));
 
         if (!bitmapEmWidth.has_value()) {
-          bitmapEmWidth.emplace(sheet.DesignWidth / gridSize.x);
+          bitmapEmWidth.emplace(cellSize.x);
         }
         if (!bitmapEmHeight.has_value()) {
-          bitmapEmHeight.emplace(sheet.DesignHeight / gridSize.y);
+          bitmapEmHeight.emplace(cellSize.y);
         }
 
         if (fontType == SingleSheet) {
           Fonts[name] = new SingleSheetFont(
               *bitmapEmWidth, *bitmapEmHeight, foregroundOpacityCurve,
-              outlineOpacityCurve, sheet, gridSize,
+              outlineOpacityCurve, sheet, gridSize, cellSize,
               EnsureGetAdvanceWidths(name, *bitmapEmWidth));
         } else {
           assert(fontType == EdgeDetectedSingleSheet);
@@ -100,7 +103,7 @@ void LoadFonts() {
 
           Fonts[name] = new EdgeDetectedSingleSheetFont(
               *bitmapEmWidth, *bitmapEmHeight, foregroundOpacityCurve, sheet,
-              gridSize, EnsureGetAdvanceWidths(name, *bitmapEmWidth),
+              gridSize, cellSize, EnsureGetAdvanceWidths(name, *bitmapEmWidth),
               differenceFactor, intensityShift, alphaShift);
         }
       } break;

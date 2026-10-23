@@ -20,6 +20,7 @@
 #include "../../inputsystem.h"
 #include "../../ui/widgets/label.h"
 #include "../../vm/interface/input.h"
+#include "../../data/savesystem.h"
 
 namespace Impacto {
 namespace UI {
@@ -34,6 +35,11 @@ using namespace Impacto::Vm::Interface;
 using namespace Impacto::UI::Widgets::CC;
 
 void TitleMenu::MenuButtonOnClick(Widgets::Button* target) {
+#ifdef IMPACTO_ASTRA_EMU
+  if ((target->Id == 10 || target->Id == 11) && !SaveSystem::Implementation) {
+    throw std::runtime_error("Native CC load requested, but the CC save/restore backend is not implemented");
+  }
+#endif
   target->Hovered = false;
   ScrWork[SW_TITLECUR1] = target->Id;
   SetFlag(SF_TITLEEND, 1);
@@ -155,6 +161,12 @@ TitleMenu::TitleMenu() {
   EndingList->OnClickHandler = onClick;
   EndingList->IsSubButton = true;
   ExtraItems->Add(EndingList, FDIR_RIGHT);
+}
+
+TitleMenu::~TitleMenu() {
+  delete MainItems;
+  delete ContinueItems;
+  delete ExtraItems;
 }
 
 void TitleMenu::Show() {

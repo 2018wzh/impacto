@@ -27,3 +27,10 @@
 #include <fmt/chrono.h>
 #include <ankerl/unordered_dense.h>
 #include <magic_enum/magic_enum.hpp>
+
+#ifdef IMPACTO_ASTRA_EMU
+#include "astra/runtime.h"
+namespace Impacto {
+[[noreturn]] inline void exit(int code) { Astra::NativeExit(code); }
+}
+#endif

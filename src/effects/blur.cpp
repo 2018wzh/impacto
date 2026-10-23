@@ -29,9 +29,12 @@ void BlurEffect::Init() {
   BlurSprite.Sheet.Texture = texture.Submit();
 }
 
-BlurEffect::~BlurEffect() {
-  if (Renderer) Renderer->FreeTexture(BlurSprite.Sheet.Texture);
+void BlurEffect::Reset() {
+  if (Renderer && BlurSprite.Sheet.Texture) Renderer->FreeTexture(BlurSprite.Sheet.Texture);
+  BlurSprite.Sheet.Texture = 0;
 }
+
+BlurEffect::~BlurEffect() { Reset(); }
 
 void BlurEffect::Render(int iterations) {
   if (Profile::Vm::GameInstructionSet == Vm::InstructionSet::CHLCC) {

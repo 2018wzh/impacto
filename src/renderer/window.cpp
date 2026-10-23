@@ -154,7 +154,16 @@ static SDL_Cursor* LoadCursorFromFile(const std::string& path) {
   return cursor;
 }
 
+void ShutdownCursors() {
+  if (CursorArrow) SDL_DestroyCursor(CursorArrow);
+  if (CursorPointer) SDL_DestroyCursor(CursorPointer);
+  CursorArrow = CursorPointer = CurrentCursor = nullptr;
+  RequestedCursorType.reset();
+  PreviousInputDevice = Input::Device::Mouse;
+}
+
 void InitCursors() {
+  ShutdownCursors();
   if (Profile::Game::CursorArrowPath.has_value()) {
     CursorArrow = LoadCursorFromFile(*Profile::Game::CursorArrowPath);
   }
@@ -336,6 +345,9 @@ RectF BaseWindow::GetScaledViewport() {
 }
 
 bool BaseWindow::CreateSDLWindow(SDL_WindowFlags flags) {
+#ifdef IMPACTO_ASTRA_EMU
+  flags |= SDL_WINDOW_HIDDEN;
+#endif
   auto const& config = UserConfig::CommonSettings;
   WindowWidth = config.ResolutionWidth;
   WindowHeight = config.ResolutionHeight;
@@ -366,6 +378,14 @@ void BaseWindow::ApplyWindowSettings() {
   auto const& config = UserConfig::CommonSettings;
   WindowWidth = config.ResolutionWidth;
   WindowHeight = config.ResolutionHeight;
+#ifdef IMPACTO_ASTRA_EMU
+  SDL_SetWindowSize(SDLWindow, 1920, 1080);
+  WindowWidth = 1920;
+  WindowHeight = 1080;
+  RecreateFBOs = true;
+  Update();
+  return;
+#endif
 
   DisplayMode dispMode = GetDefaultDispMode();
 

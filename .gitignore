@@ -203,6 +203,8 @@ orleans.codegen.cs
 *.cbp
 cmake_install.cmake
 include/
+!/vendor/astra-emu-abi/include/
+!/vendor/astra-emu-abi/include/astra_emu.h
 Makefile
 .DS_Store
 .cache

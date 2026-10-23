@@ -40,6 +40,7 @@ void InitializeFramebuffers() {
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  CurrentDrawFramebuffer = CurrentReadFramebuffer = CurrentFramebuffer = 0;
 }
 
 void BindFramebuffer(GLenum target, GLuint framebuffer) {

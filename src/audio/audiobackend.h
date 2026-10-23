@@ -7,6 +7,7 @@ namespace Audio {
 
 class AudioBackend {
  public:
+  virtual ~AudioBackend() = default;
   virtual bool Init() { return true; };
 
   virtual bool Reinit() { return true; };

@@ -23,6 +23,7 @@ class FFmpegAudioPlayer {
 
   virtual void Stop() {};
   virtual void Unload() {};
+  virtual void SetPaused(bool paused) { AudioClock.SetPaused(paused); }
 
   Video::Clock& GetClock() { return AudioClock; };
 

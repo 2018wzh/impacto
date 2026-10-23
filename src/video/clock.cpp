@@ -21,6 +21,12 @@ void Clock::Set(Microseconds pts, int serial) {
   Serial = serial;
 }
 
+void Clock::SetPaused(bool paused) {
+  if (Paused == paused) return;
+  Set(Get(), Serial);
+  Paused = paused;
+}
+
 Clock::Microseconds Clock::Get() {
   if (Paused) {
     return Pts;

@@ -13,6 +13,7 @@ namespace CC {
 class TitleMenu : public Menu {
  public:
   TitleMenu();
+  ~TitleMenu() override;
 
   void Show() override;
   void Hide() override;

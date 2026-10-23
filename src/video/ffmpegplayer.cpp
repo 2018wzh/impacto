@@ -187,6 +187,7 @@ std::optional<av::Codec> findDecoderCodec(av::Stream const& avStream) {
 
   if constexpr (MediaType == AVMEDIA_TYPE_VIDEO) {
     const AVCodecDescriptor* desc = avcodec_descriptor_get(codecId);
+    if (!desc) return std::nullopt;
 #ifdef __ANDROID__
     const std::string decoderName = fmt::format("{}_mediacodec", desc->name);
 #else
@@ -212,7 +213,7 @@ void FFmpegPlayer::OpenCodec(std::optional<FFmpegStream<MediaType>>& streamOpt,
   }
   std::optional<av::Codec> codec = findDecoderCodec<MediaType>(avStream);
   if (!codec) {
-    avStream.reset();
+    throw std::runtime_error("No native FFmpeg decoder for codec " + std::to_string(avStream.codecParameters().codecId()));
   }
 
   DecodingContext_t<MediaType> decoderContext{avStream, *codec};
@@ -267,6 +268,7 @@ void FFmpegPlayer::OpenCodec(std::optional<FFmpegStream<MediaType>>& streamOpt,
     }();
     ImpLog(LogLevel::Error, channel, "Failed to open codec, error: {:s}",
            ec.message());
+    throw std::runtime_error("Native codec open failed: " + ec.message());
   }
 
   double rate = 1;
@@ -319,7 +321,11 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
     ImpLog(LogLevel::Error, LogChannel::Video,
            "Error opening file, error: {:s}\n", ec.message());
     StreamPtr.reset();
+#ifdef IMPACTO_ASTRA_EMU
+    throw std::runtime_error("Native movie container open failed: " + ec.message());
+#else
     return;
+#endif
   }
 
   FormatContext.findStreamInfo(ec);
@@ -327,7 +333,11 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
     ImpLog(LogLevel::Error, LogChannel::Video,
            "Error opening file, error: {:s}\n", ec.message());
     StreamPtr.reset();
+#ifdef IMPACTO_ASTRA_EMU
+    throw std::runtime_error("Native movie stream discovery failed: " + ec.message());
+#else
     return;
+#endif
   }
 
   av::Stream videoStream;
@@ -361,6 +371,9 @@ void FFmpegPlayer::Play(Io::Stream* stream, bool looping, bool alpha) {
                                   audioStreamId);
     AudioPlayer->InitConvertContext(AudioStream->CodecContext.raw());
   }
+#ifdef IMPACTO_ASTRA_EMU
+  if (!VideoStream) throw std::runtime_error("Native movie has no decodable video stream");
+#endif
   VideoClock = Clock();
   MasterClock = &VideoClock;
   using namespace std::literals::chrono_literals;
@@ -667,23 +680,24 @@ template void FFmpegPlayer::Decode<AVMEDIA_TYPE_SUBTITLE>(
     FFmpegStream<AVMEDIA_TYPE_SUBTITLE>& stream);
 
 void FFmpegPlayer::Stop() {
-  if (IsPlaying) {
+  {
     IsPlaying = false;
     PlaybackStarted = false;
     AbortRequest = true;
-    ReadThread.join();
+    ReadCond.notify_all();
+    if (ReadThread.joinable()) ReadThread.join();
     ReaderEOF = false;
     if (AudioStream) {
-      AudioStream->DecoderThread.join();
+      if (AudioStream->DecoderThread.joinable()) AudioStream->DecoderThread.join();
       AudioStream.reset();
       AudioPlayer->Unload();
     }
     if (VideoStream) {
-      VideoStream->DecoderThread.join();
+      if (VideoStream->DecoderThread.joinable()) VideoStream->DecoderThread.join();
       VideoStream.reset();
     }
     for (auto& subStream : EmbeddedSubtitleStreams) {
-      subStream.DecoderThread.join();
+      if (subStream.DecoderThread.joinable()) subStream.DecoderThread.join();
     }
     EmbeddedSubtitleStreams.clear();
     SubPlayer.reset();
@@ -704,6 +718,15 @@ void FFmpegPlayer::Stop() {
 
     SetFlag(SF_MOVIEPLAY, false);
   }
+}
+
+void FFmpegPlayer::SetPaused(bool paused) {
+  if (IsPaused == paused) return;
+  VideoPlayer::SetPaused(paused);
+  if (!IsPlaying) return;
+  VideoClock.SetPaused(paused);
+  if (AudioStream && AudioPlayer) AudioPlayer->SetPaused(paused);
+  if (!paused) FrameTimer = Clock::Now();
 }
 
 void FFmpegPlayer::Seek(int64_t pos) {

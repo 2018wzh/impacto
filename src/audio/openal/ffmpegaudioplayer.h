@@ -22,6 +22,7 @@ class FFmpegAudioPlayer : public Audio::FFmpegAudioPlayer {
 
   void Stop() override;
   void Unload() override;
+  void SetPaused(bool paused) override;
 
  private:
   ALCuint ALSource = 0;
@@ -33,6 +34,7 @@ class FFmpegAudioPlayer : public Audio::FFmpegAudioPlayer {
   int FreeBufferCount = AudioBufferCount;
   int BufferStartPositions[AudioBufferCount] = {};
   bool First = true;
+  bool ResumeAfterPause = false;
 };
 
 }  // namespace OpenAL

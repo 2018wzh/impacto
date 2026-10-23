@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // https://github.com/OpenImageIO/oiio/blob/master/LICENSE.md
 
+#include <limits>
 #include <string>
 
 #include "../log.h"
@@ -105,16 +106,17 @@ typedef struct {
 
 namespace {
 struct DdsReader {
-  int m_nchans = 0;
-  int m_nfaces = 0;
-  int m_Bpp = 0;
-  int m_redL = 0, m_redR = 0;
+  int m_nchans = 0;           ///< Number of colour channels in image
+  int m_nfaces = 0;           ///< Number of cube map sides in image
+  int m_Bpp = 0;              ///< Number of bytes per pixel
+  int m_redL = 0, m_redR = 0;  ///< Bit shifts to extract red channel
   int m_greenL = 0, m_greenR = 0;
   int m_blueL = 0, m_blueR = 0;
   int m_alphaL = 0, m_alphaR = 0;
   dds_header m_dds{};
 
   bool internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int d);
+  bool ReadHeader(Stream* stream);
   bool Load(Stream* stream, Texture* outTexture);
 };
 }  // namespace
@@ -205,7 +207,7 @@ bool DdsReader::internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int
   return true;
 }
 
-bool DdsReader::Load(Stream* stream, Texture* outTexture) {
+bool DdsReader::ReadHeader(Stream* stream) {
   stream->Seek(0, IoSeek::Set);
 
   m_dds.fourCC = ReadLE<uint32_t>(stream);
@@ -304,6 +306,11 @@ bool DdsReader::Load(Stream* stream, Texture* outTexture) {
   } else
     m_nfaces = 1;
 
+  return true;
+}
+
+bool DdsReader::Load(Stream* stream, Texture* outTexture) {
+  if (!ReadHeader(stream)) return false;
   TexFmt texFmt = TexFmt_RGBA;
   if (m_nchans == 3) {
     texFmt = TexFmt_RGB;
@@ -320,6 +327,29 @@ bool DdsReader::Load(Stream* stream, Texture* outTexture) {
 
 bool TextureLoadDDS(Stream* stream, Texture* outTexture) {
   return DdsReader{}.Load(stream, outTexture);
+}
+
+bool TextureLoadDDSPair(Stream* top, Stream* bottom, Texture* outTexture) {
+  DdsReader upper;
+  DdsReader lower;
+  if (!upper.ReadHeader(top) || !lower.ReadHeader(bottom)) return false;
+  if (upper.m_nchans != 4 || lower.m_nchans != 4 ||
+      upper.m_dds.depth != 1 || lower.m_dds.depth != 1 ||
+      ((upper.m_dds.caps.flags2 | lower.m_dds.caps.flags2) &
+       (DDS_CAPS2_CUBEMAP | DDS_CAPS2_VOLUME)) ||
+      upper.m_dds.width != lower.m_dds.width) return false;
+  const uint64_t width = upper.m_dds.width;
+  const uint64_t height = uint64_t(upper.m_dds.height) + lower.m_dds.height;
+  if (width > std::numeric_limits<int>::max() ||
+      height > std::numeric_limits<int>::max() ||
+      width * height * 4 > std::numeric_limits<int>::max()) return false;
+  outTexture->Init(TexFmt_RGBA, int(width), int(height));
+  auto* pixels = outTexture->Buffer.data();
+  if (!upper.internal_readimg(top, pixels, int(width),
+                              int(upper.m_dds.height), 1)) return false;
+  pixels += width * upper.m_dds.height * 4;
+  return lower.internal_readimg(bottom, pixels, int(width),
+                                int(lower.m_dds.height), 1);
 }
 
 static bool _registered = Texture::AddTextureLoader(&TextureLoadDDS);

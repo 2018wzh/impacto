@@ -76,7 +76,11 @@ using namespace Profile::ScriptVars;
 
 namespace Game {
 
+static float GameStateSecondCounter = 0.0f;
+static float SystemSecondCounter = 0.0f;
+
 void Init() {
+  GameStateSecondCounter = SystemSecondCounter = 0.0f;
   SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 
   WorkQueue::Init();
@@ -204,6 +208,9 @@ void InitGameProfile() {
 }
 
 void Shutdown() {
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Astra::IsClosing()) Astra::NativeExit(1);
+#endif
   if (+Profile::Game::GameFeatures & +GameFeature::Audio) {
     Audio::AudioShutdown();
   }
@@ -249,7 +256,7 @@ void LauncherRender() {
 }
 
 void UpdateGameState(float dt) {
-  static float UpdateSecondCounter = 0.0f;
+  float& UpdateSecondCounter = GameStateSecondCounter;
   UpdateSecondCounter += dt;
   if (UpdateSecondCounter >= 1) {
     constexpr int maxPlayTime = (999 * 60 + 59) * 60 + 59;
@@ -288,7 +295,7 @@ void UpdateGameState(float dt) {
 void UpdateSystem(float dt) {
   constexpr float updateInterval = 1.0f / 60.0f;
 
-  static float UpdateSecondCounter = 0.0f;
+  float& UpdateSecondCounter = SystemSecondCounter;
   UpdateSecondCounter += dt;
   if (UpdateSecondCounter < updateInterval) {
     return;

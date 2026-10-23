@@ -15,6 +15,7 @@ class Clock {
   Clock();
   void SyncTo(Clock* target);
   void Set(Microseconds pts, int serial);
+  void SetPaused(bool paused);
   Microseconds Get();
   static MonotonicTime Now() { return std::chrono::steady_clock::now(); };
 };

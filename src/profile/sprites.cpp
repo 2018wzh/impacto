@@ -4,7 +4,10 @@
 #include "../log.h"
 #include "../renderer/renderer.h"
 #include "../texture/texture.h"
+#include "../texture/ddsloader.h"
 #include <future>
+#include <memory>
+#include <stdexcept>
 
 namespace Impacto {
 namespace Profile {
@@ -20,6 +23,15 @@ static Texture LoadTexture(Io::Stream* stream, std::string name) {
 
   delete stream;
 
+  return texture;
+}
+
+static Texture LoadTexturePair(std::unique_ptr<Io::Stream> top,
+                               std::unique_ptr<Io::Stream> bottom) {
+  Texture texture{};
+  if (!Gxm::TextureLoadDDSPair(top.get(), bottom.get(), &texture)) {
+    throw std::runtime_error("DDS strips must have matching RGBA rows");
+  }
   return texture;
 }
 
@@ -49,8 +61,20 @@ void LoadSpritesheets() {
         Window->Shutdown();
       }
 
-      futures.emplace_back(std::tuple(
-          name, std::async(std::launch::async, LoadTexture, stream, name)));
+      if (auto appendPath = TryGetMember<Io::AssetPath>("AppendPath")) {
+        std::unique_ptr<Io::Stream> top(stream);
+        Io::Stream* rawBottom = nullptr;
+        const IoError appendError = appendPath->Open(&rawBottom);
+        std::unique_ptr<Io::Stream> bottom(rawBottom);
+        if (appendError != IoError_OK) {
+          throw std::runtime_error("Could not open appended native spritesheet");
+        }
+        futures.emplace_back(name, std::async(std::launch::async,
+            LoadTexturePair, std::move(top), std::move(bottom)));
+      } else {
+        futures.emplace_back(std::tuple(
+            name, std::async(std::launch::async, LoadTexture, stream, name)));
+      }
     }
     Pop();
   }

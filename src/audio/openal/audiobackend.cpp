@@ -19,7 +19,7 @@ static LPALCREOPENDEVICESOFT ReopenSoftFunc = 0;
 void AL_APIENTRY DefaultDeviceChangedEventCallback(
     ALCenum eventType, ALCenum deviceType, ALCdevice* device, ALCsizei length,
     const ALCchar* message, void* userParam) {
-  *(bool*)userParam = true;
+  static_cast<std::atomic<bool>*>(userParam)->store(true);
 }
 
 bool AudioBackend::Init() {
@@ -33,7 +33,7 @@ bool AudioBackend::Init() {
   if (!AlcContext || !alcMakeContextCurrent(AlcContext)) {
     ImpLog(LogLevel::Fatal, LogChannel::Audio,
            "Failed to create OpenAL context\n");
-    alcCloseDevice(AlcDevice);
+    Shutdown();
     return false;
   }
   if (alIsExtensionPresent("AL_EXT_float32") == AL_FALSE) {
@@ -68,15 +68,31 @@ bool AudioBackend::Reinit() {
   if (!AlcContext || !alcMakeContextCurrent(AlcContext)) {
     ImpLog(LogLevel::Fatal, LogChannel::Audio,
            "Failed to create OpenAL context\n");
-    alcCloseDevice(AlcDevice);
+    Shutdown();
     return false;
   }
   return true;
 }
 
 void AudioBackend::Shutdown() {
+#if ALC_SOFT_system_events
+  if (EventCallBackFunc) EventCallBackFunc(nullptr, nullptr);
+  if (EventControlFunc) {
+    const ALCenum eventType{ALC_EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT};
+    EventControlFunc(1, &eventType, AL_FALSE);
+  }
+  EventCallBackFunc = nullptr;
+  EventControlFunc = nullptr;
+#endif
+#if ALC_SOFT_reopen_device
+  ReopenSoftFunc = nullptr;
+#endif
+  IsReopenSupported = false;
+  alcMakeContextCurrent(nullptr);
   if (AlcContext) alcDestroyContext(AlcContext);
+  AlcContext = nullptr;
   if (AlcDevice) alcCloseDevice(AlcDevice);
+  AlcDevice = nullptr;
 }
 
 bool AudioBackend::DidDeviceChanged() { return DeviceChanged; }

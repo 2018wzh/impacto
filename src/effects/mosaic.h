@@ -11,6 +11,7 @@ class MosaicEffect {
   ~MosaicEffect();
 
   void Init();
+  void Reset();
 
   void Render(float tileSize);
 

@@ -153,7 +153,11 @@ void AudioShutdown() {
     Channels[i] = nullptr;
   }
   IsInit = false;
-  Backend->Shutdown();
+  if (Backend) {
+    Backend->Shutdown();
+    delete Backend;
+    Backend = nullptr;
+  }
 }
 
 void AudioInit() {
@@ -175,7 +179,11 @@ void AudioInit() {
     }
   }
 
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Backend->Init()) throw std::runtime_error("Native OpenAL initialization failed");
+#else
   if (!Backend->Init()) return;
+#endif
   for (int i = AC_SE0; i <= AC_SE2; i++)
     Channels[i] = AudioChannel::Create((AudioChannelId)i, ACG_SE);
   for (int i = AC_VOICE0; i <= AC_REV; i++)

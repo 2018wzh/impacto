@@ -12,6 +12,7 @@ inline CursorType ActiveCursorType = CursorType::Default;
 void InitWindow();
 void SetWindowIcon(SDL_Window* window);
 void InitCursors();
+void ShutdownCursors();
 void RequestCursor(CursorType type);
 void ApplyCursorForFrame();
 bool HandleWindowEvents(SDL_Event const* evt);

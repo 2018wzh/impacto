@@ -71,6 +71,19 @@ void FFmpegAudioPlayer::InitConvertContext(AVCodecContext* codecCtx) {
 
 void FFmpegAudioPlayer::Stop() { alSourceStop(ALSource); }
 
+void FFmpegAudioPlayer::SetPaused(bool paused) {
+  Audio::FFmpegAudioPlayer::SetPaused(paused);
+  if (paused) {
+    ALint state = AL_STOPPED;
+    alGetSourcei(ALSource, AL_SOURCE_STATE, &state);
+    ResumeAfterPause = state == AL_PLAYING;
+    alSourcePause(ALSource);
+  } else {
+    if (ResumeAfterPause) alSourcePlay(ALSource);
+    ResumeAfterPause = false;
+  }
+}
+
 void FFmpegAudioPlayer::Unload() {
   Stop();
   alSourcei(ALSource, AL_BUFFER, 0);

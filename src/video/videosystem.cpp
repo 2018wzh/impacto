@@ -11,7 +11,10 @@ namespace Video {
 
 void VideoShutdown() {
   for (int i = 0; i < VP_Count; i++) {
+    if (!Players[i]) continue;
     Players[i]->Stop();
+    delete Players[i];
+    Players[i] = nullptr;
   }
 }
 

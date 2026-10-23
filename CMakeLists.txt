@@ -17,6 +17,17 @@ string(STRIP "${APP_VERSION}" APP_VERSION)
 string(REGEX REPLACE "\\.$" "" APP_VERSION "${APP_VERSION}")
 
 project("impacto" VERSION ${APP_VERSION})
+option(IMPACTO_ASTRA_EMU "Build the AstraEMU C ABI v3 shared core" OFF)
+if(IMPACTO_ASTRA_EMU)
+    set(IMPACTO_DISABLE_VULKAN ON)
+    set(IMPACTO_DISABLE_DX9 ON)
+    set(IMPACTO_DISABLE_IMGUI ON)
+    set(IMPACTO_HAVE_THREADS OFF CACHE BOOL "Native work runs on the core worker" FORCE)
+    set(IMPACTO_USE_SDL_HIGHDPI OFF CACHE BOOL "Fixed native raster" FORCE)
+    set(ASTRA_EMU_ABI_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/astra-emu-abi/include" CACHE PATH "Pinned AstraEMU v3 generated header directory (override for integration)")
+    add_compile_definitions(IMPACTO_ASTRA_EMU)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 SET(APP_VERSION_SHORT)
 
 include(FetchContent)
@@ -861,7 +872,7 @@ endif()
 
 FetchContent_Declare(
     libatrac9
-    GIT_TAG "master"
+    GIT_TAG "efca2e3af35562a09a9bb6deed90e45b4b824dc4"
     GIT_REPOSITORY "https://github.com/Thealexbarney/LibAtrac9.git"
     PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/vendor/patches/LibAtrac9/CMakeLists.txt <SOURCE_DIR>/CMakeLists.txt
     SYSTEM
@@ -1284,7 +1295,14 @@ endif ()
 
 configure_file(src/version.h.in ${PROJECT_BINARY_DIR}/include/version.h)
 
-if(ANDROID)
+if(IMPACTO_ASTRA_EMU)
+    list(REMOVE_ITEM Impacto_Src src/main.cpp)
+    add_library(impacto SHARED ${Impacto_Src} ${Impacto_Header} src/astra/core.cpp)
+    add_library(astra-emu-impacto ALIAS impacto)
+    set_target_properties(impacto PROPERTIES OUTPUT_NAME astra_emu_impacto PREFIX "")
+    target_include_directories(impacto PRIVATE "${ASTRA_EMU_ABI_INCLUDE_DIR}")
+    install(FILES LICENSE THIRDPARTY.md DESTINATION .)
+elseif(ANDROID)
     add_library(impacto SHARED ${Impacto_Src} ${Impacto_Header})
     target_link_options(impacto PRIVATE "LINKER:--build-id=sha1")
 elseif(APPLE)
@@ -1440,7 +1458,9 @@ elseif (NX)
 elseif (WIN32)
     install(TARGETS impacto RUNTIME DESTINATION .)
     install(FILES $<TARGET_RUNTIME_DLLS:impacto> DESTINATION .)
-    x_vcpkg_install_local_dependencies(TARGETS impacto DESTINATION .)
+    if(COMMAND x_vcpkg_install_local_dependencies)
+        x_vcpkg_install_local_dependencies(TARGETS impacto DESTINATION .)
+    endif()
 elseif(APPLE)
     install(TARGETS impacto
             BUNDLE  DESTINATION .
@@ -1478,7 +1498,12 @@ endif ()
 
 # asset install
 
-if (NOT ANDROID)
+if (IMPACTO_ASTRA_EMU)
+    install(DIRECTORY profiles resources DESTINATION Resources
+        PATTERN ".gitkeep" EXCLUDE)
+    install(DIRECTORY src/shaders DESTINATION Resources/src
+        PATTERN ".gitkeep" EXCLUDE)
+elseif (NOT ANDROID)
     if(NOT APPLE)
         install(DIRECTORY src/shaders DESTINATION .)
         install(DIRECTORY resources DESTINATION .)

@@ -177,12 +177,20 @@ void Init() {
                       : Profile::Vm::StartScript - 1);
   }
   if (res) {
+#ifdef IMPACTO_ASTRA_EMU
+    Astra::CheckCancellation();
+#endif
     Sc3VmThread* startupThd = CreateThread(0);
     startupThd->GroupId = 0;
     startupThd->ScriptBufferId = Profile::Vm::StartScriptBuffer;
     startupThd->IpOffset =
         ScriptGetLabelAddress(Profile::Vm::StartScriptBuffer, 0);
   }
+#ifdef IMPACTO_ASTRA_EMU
+  if (!res) {
+    throw std::runtime_error("Native CC startup script could not be loaded");
+  }
+#endif
 
   ScrWork[2200] = 1;  // Global animation multiplier maybe?... Set in GameInit()
 }
@@ -470,6 +478,9 @@ void RunThread(Sc3VmThread* thread, float dt) {
 
   BlockCurrentScriptThread = 0;
   do {
+#ifdef IMPACTO_ASTRA_EMU
+    Astra::CheckCancellation();
+#endif
     auto scriptIp = thread->IpOffset;
 #ifndef IMPACTO_DISABLE_IMGUI
     if (!DebuggerStepRequest && !DebuggerContinueRequest) {
@@ -531,6 +542,9 @@ void RunThread(Sc3VmThread* thread, float dt) {
                  "Call stack empty, attempting instruction skip (will most "
                  "likely result in a hang).\n");
           while (*(thread->GetIp()) != 0xFE) {
+#ifdef IMPACTO_ASTRA_EMU
+            Astra::CheckCancellation();
+#endif
             thread->IpOffset++;
           }
         }

@@ -4,6 +4,8 @@
 #include <cassert>
 #include <vector>
 #include <utility>
+#include <memory>
+#include <exception>
 
 #if IMPACTO_HAVE_THREADS
 #include <thread>
@@ -96,7 +98,17 @@ void Push(void* data, WorkProc worker,
   item.OnComplete = completionCallback;
   item.Handle();
 }
-void StopWorkQueue() {}
+void StopWorkQueue() {
+  SDL_Event event;
+  std::exception_ptr failure;
+  while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, WorkCompletedEventType,
+                        WorkCompletedEventType) == 1) {
+    try { HandleEvent(&event); }
+    catch (...) { if (!failure) failure = std::current_exception(); }
+  }
+  WorkCompletedEventType = 0;
+  if (failure) std::rethrow_exception(failure);
+}
 
 #endif
 
@@ -112,9 +124,8 @@ void WorkItem::Handle() {
 bool HandleEvent(SDL_Event* evt) {
   if (evt->type != WorkCompletedEventType) return false;
 
-  auto item = static_cast<WorkItem*>(evt->user.data1);
+  std::unique_ptr<WorkItem> item(static_cast<WorkItem*>(evt->user.data1));
   item->OnComplete(item->Data);
-  delete item;
   return true;
 }
 

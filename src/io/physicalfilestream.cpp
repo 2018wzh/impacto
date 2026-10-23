@@ -68,7 +68,11 @@ std::ios_base::openmode PhysicalFileStream::PrepareFileOpenMode(
 
 IoError PhysicalFileStream::Create(std::string const& fileName, Stream** out,
                                    CreateFlags flags) {
+#ifdef IMPACTO_ASTRA_EMU
+  PhysicalFileStream* result = new PhysicalFileStream(Astra::ResolveResource(fileName), flags);
+#else
   PhysicalFileStream* result = new PhysicalFileStream(fileName, flags);
+#endif
   if (auto err = result->ErrorCode; err != IoError_OK) {
     ImpLog(LogLevel::Error, LogChannel::IO, "Failed to open file \"{:s}\"\n",
            result->SourceFileName);

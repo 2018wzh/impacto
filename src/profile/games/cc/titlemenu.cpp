@@ -99,6 +99,7 @@ void Configure() {
   menu->SmokeAnimation.DurationOut = SmokeAnimationDurationOut;
   menu->MoveLeftAnimation.DurationIn = MoveLeftAnimationDurationIn;
   menu->MoveLeftAnimation.DurationOut = MoveLeftAnimationDurationOut;
+  delete UI::TitleMenuPtr;
   UI::TitleMenuPtr = menu;
 
   auto drawType = EnsureGetMember<Game::DrawComponentType>("DrawType");

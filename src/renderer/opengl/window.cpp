@@ -302,7 +302,9 @@ void GLWindow::Update() {
       glViewport(0, 0, WindowWidth, WindowHeight);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+#ifndef IMPACTO_ASTRA_EMU
       SDL_GL_SwapWindow(SDLWindow);
+#endif
     }
   }
 
@@ -348,16 +350,29 @@ void GLWindow::Draw() {
   }
 #endif
 
+#ifdef IMPACTO_ASTRA_EMU
+  Astra::CaptureFrame(WindowWidth, WindowHeight);
+#else
   SDL_GL_SwapWindow(SDLWindow);
+#endif
 }
 
 void GLWindow::Shutdown() {
-  CleanFBOs();
-  SDL_GL_DestroyContext(GLContext);
-  SDL_DestroyWindow(SDLWindow);
+#ifdef IMPACTO_ASTRA_EMU
+  if (!Astra::IsClosing()) Astra::NativeExit(1);
+#endif
+  if (GLContext) {
+    CleanFBOs();
+    SDL_GL_DestroyContext(GLContext);
+    GLContext = nullptr;
+  }
+  if (SDLWindow) SDL_DestroyWindow(SDLWindow);
+  SDLWindow = nullptr;
+  IsInit = false;
   SDL_Quit();
-  // TODO move exit to users
+#ifndef IMPACTO_ASTRA_EMU
   exit(0);
+#endif
 }
 
 }  // namespace OpenGL

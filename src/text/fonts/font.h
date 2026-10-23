@@ -90,10 +90,11 @@ class SingleSheetFont : public Font {
   SingleSheetFont(float bitmapEmWidth, float bitmapEmHeight,
                   OpacityCurve foregroundOpacityCurve,
                   OpacityCurve outlineOpacityCurve, SpriteSheet sheet,
-                  glm::ivec2 gridSize, std::vector<float>&& advanceWidths)
+                  glm::ivec2 gridSize, glm::vec2 cellSize,
+                  std::vector<float>&& advanceWidths)
       : SingleSheetFont(FontType::SingleSheet, bitmapEmWidth, bitmapEmHeight,
                         foregroundOpacityCurve, outlineOpacityCurve, sheet,
-                        gridSize, std::move(advanceWidths)) {}
+                        gridSize, cellSize, std::move(advanceWidths)) {}
 
   virtual void DrawProcessedText(std::span<const ProcessedTextGlyph> text,
                                  float opacity, float outlineOpacity,
@@ -120,12 +121,13 @@ class SingleSheetFont : public Font {
   SingleSheetFont(FontType fontType, float bitmapEmWidth, float bitmapEmHeight,
                   OpacityCurve foregroundOpacityCurve,
                   OpacityCurve outlineOpacityCurve, SpriteSheet sheet,
-                  glm::ivec2 gridSize, std::vector<float>&& advanceWidths)
+                  glm::ivec2 gridSize, glm::vec2 cellSize,
+                  std::vector<float>&& advanceWidths)
       : Font(fontType, bitmapEmWidth, bitmapEmHeight, foregroundOpacityCurve,
              outlineOpacityCurve),
         Sheet(sheet),
         GridSize(gridSize),
-        CellSize(sheet.GetDimensions() / static_cast<glm::vec2>(gridSize)),
+        CellSize(cellSize),
         AdvanceWidths(std::move(advanceWidths)) {}
 
  private:
@@ -274,13 +276,13 @@ class EdgeDetectedSingleSheetFont final : public SingleSheetFont {
  public:
   EdgeDetectedSingleSheetFont(float bitmapEmWidth, float bitmapEmHeight,
                               OpacityCurve opacityCurve, SpriteSheet sheet,
-                              glm::ivec2 gridSize,
+                              glm::ivec2 gridSize, glm::vec2 cellSize,
                               std::vector<float>&& advanceWidths,
                               float differenceFactor, float intensityShift,
                               float alphaShift)
       : SingleSheetFont(FontType::EdgeDetectedSingleSheet, bitmapEmWidth,
                         bitmapEmHeight, opacityCurve, opacityCurve, sheet,
-                        gridSize, std::move(advanceWidths)),
+                        gridSize, cellSize, std::move(advanceWidths)),
         DifferenceFactor(differenceFactor),
         IntensityShift(intensityShift),
         AlphaShift(alphaShift) {}

@@ -13,6 +13,7 @@ enum class InputRate : uint8_t { SingleTap, RepeatSlow, RepeatFast, Hold };
 
 class Menu {
  public:
+  virtual ~Menu() = default;
   virtual void Init() {};
   virtual void Show();
   virtual void Hide();
