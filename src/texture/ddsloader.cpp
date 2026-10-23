@@ -103,15 +103,21 @@ typedef struct {
   dds_caps caps;      ///< DirectDraw Surface caps
 } dds_header;
 
-std::vector<uint8_t> m_buf;  ///< Buffer the image pixels
-int m_nchans;                ///< Number of colour channels in image
-int m_nfaces;                ///< Number of cube map sides in image
-int m_Bpp;                   ///< Number of bytes per pixel
-int m_redL, m_redR;          ///< Bit shifts to extract red channel
-int m_greenL, m_greenR;      ///< Bit shifts to extract green channel
-int m_blueL, m_blueR;        ///< Bit shifts to extract blue channel
-int m_alphaL, m_alphaR;      ///< Bit shifts to extract alpha channel
-dds_header m_dds;
+namespace {
+struct DdsReader {
+  int m_nchans = 0;
+  int m_nfaces = 0;
+  int m_Bpp = 0;
+  int m_redL = 0, m_redR = 0;
+  int m_greenL = 0, m_greenR = 0;
+  int m_blueL = 0, m_blueR = 0;
+  int m_alphaL = 0, m_alphaR = 0;
+  dds_header m_dds{};
+
+  bool internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int d);
+  bool Load(Stream* stream, Texture* outTexture);
+};
+}  // namespace
 
 inline void calc_shifts(int mask, int& left, int& right) {
   if (mask == 0) {
@@ -131,7 +137,7 @@ inline void calc_shifts(int mask, int& left, int& right) {
   left = 8 - i;
 }
 
-bool internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int d) {
+bool DdsReader::internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int d) {
   if (m_dds.fmt.flags & DDS_PF_FOURCC) {
     // compressed image
     int flags = 0;
@@ -199,7 +205,7 @@ bool internal_readimg(Stream* stream, uint8_t* dst, int w, int h, int d) {
   return true;
 }
 
-bool TextureLoadDDS(Stream* stream, Texture* outTexture) {
+bool DdsReader::Load(Stream* stream, Texture* outTexture) {
   stream->Seek(0, IoSeek::Set);
 
   m_dds.fourCC = ReadLE<uint32_t>(stream);
@@ -310,6 +316,10 @@ bool TextureLoadDDS(Stream* stream, Texture* outTexture) {
                    m_dds.depth);
 
   return true;
+}
+
+bool TextureLoadDDS(Stream* stream, Texture* outTexture) {
+  return DdsReader{}.Load(stream, outTexture);
 }
 
 static bool _registered = Texture::AddTextureLoader(&TextureLoadDDS);

@@ -28,7 +28,7 @@ class FFmpegAudioPlayer {
 
  protected:
   uint8_t** AudioBuffer = 0;
-  int AudioLinesize;
+  int AudioLinesize = 0;
 
   Video::Clock AudioClock;
 

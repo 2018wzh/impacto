@@ -24,10 +24,10 @@ class FFmpegAudioPlayer : public Audio::FFmpegAudioPlayer {
   void Unload() override;
 
  private:
-  ALCuint ALSource;
+  ALCuint ALSource = 0;
   static int constexpr AudioBufferSize = 256 * 8192;
   static int constexpr AudioBufferCount = 3;
-  ALuint BufferIds[AudioBufferCount];
+  ALuint BufferIds[AudioBufferCount] = {};
   uint8_t HostBuffer[AudioBufferSize];
   int FirstFreeBuffer = 0;
   int FreeBufferCount = AudioBufferCount;

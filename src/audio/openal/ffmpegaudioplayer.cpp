@@ -20,7 +20,8 @@ namespace OpenAL {
 
 FFmpegAudioPlayer::~FFmpegAudioPlayer() {
   alSourceStop(ALSource);
-  av_freep(&AudioBuffer[0]);
+  if (AudioBuffer) av_freep(&AudioBuffer[0]);
+  av_freep(&AudioBuffer);
   swr_free(&AudioConvertContext);
   alDeleteBuffers(AudioBufferCount, BufferIds);
   alDeleteSources(1, &ALSource);
@@ -73,7 +74,8 @@ void FFmpegAudioPlayer::Stop() { alSourceStop(ALSource); }
 void FFmpegAudioPlayer::Unload() {
   Stop();
   alSourcei(ALSource, AL_BUFFER, 0);
-  av_freep(&AudioBuffer[0]);
+  if (AudioBuffer) av_freep(&AudioBuffer[0]);
+  av_freep(&AudioBuffer);
   alDeleteSources(1, &ALSource);
   alGenSources(1, &ALSource);
   First = true;
