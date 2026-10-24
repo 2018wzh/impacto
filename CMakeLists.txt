@@ -1300,6 +1300,9 @@ if(IMPACTO_SHINKI_EMU)
     add_library(impacto SHARED ${Impacto_Src} ${Impacto_Header} src/shinki/core.cpp)
     add_library(shinki-emu-impacto ALIAS impacto)
     set_target_properties(impacto PROPERTIES OUTPUT_NAME shinki_emu_impacto PREFIX "")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set_target_properties(impacto PROPERTIES PREFIX "lib" INSTALL_RPATH "$ORIGIN")
+    endif()
     target_include_directories(impacto PRIVATE "${SHINKI_EMU_ABI_INCLUDE_DIR}")
     install(FILES LICENSE THIRDPARTY.md DESTINATION .)
 elseif(ANDROID)
@@ -1477,7 +1480,7 @@ elseif(APPLE)
             LIBRARY DESTINATION Impacto.app/Contents/Frameworks
     )
 else()
-    if (LINUX)
+    if (LINUX AND NOT IMPACTO_SHINKI_EMU)
         set_property(
             TARGET impacto
             PROPERTY INSTALL_RPATH

@@ -49,6 +49,8 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#elif defined(__linux__)
+#include <dlfcn.h>
 #endif
 
 namespace {
@@ -662,6 +664,12 @@ fs::path DefaultResourceRoot() {
   return fs::weakly_canonical(
       fs::path(std::wstring_view(path.data(), length)).parent_path() /
       "Resources");
+#elif defined(__linux__)
+  static int ModuleAnchor;
+  Dl_info module{};
+  if (!dladdr(&ModuleAnchor, &module) || !module.dli_fname)
+    throw std::invalid_argument("Cannot locate the dynamic core resource directory");
+  return fs::weakly_canonical(fs::path(module.dli_fname).parent_path() / "Resources");
 #else
   throw std::invalid_argument("resources_root is required on this platform");
 #endif

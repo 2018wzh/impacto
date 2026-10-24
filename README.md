@@ -105,10 +105,10 @@ diagnostic. It never installs packages, fetches sources or runs Cargo.
 
 The output is `shinki_emu_impacto.dll`. Keep its native dependency DLLs beside
 it. `cmake --install` creates `Resources/profiles`, `Resources/resources` and
-`Resources/src/shaders` beside the DLL. On Windows an empty `resources_root`
+`Resources/src/shaders` beside the DLL. On Windows and Linux an empty `resources_root`
 resolves only to that dynamic core's `Resources` directory. Source-tree
 acceptance passes this checkout explicitly as `resources_root`; no development
-checkout is compiled into the runtime. Static or non-Windows hosts must provide
+checkout is compiled into the runtime. Static hosts must provide
 an explicit resource root. ISC `LICENSE` and the upstream `THIRDPARTY.md`
 remain part of the distribution.
 
@@ -119,13 +119,20 @@ closure, plus the corresponding source and relinking materials required by
 the LGPL components listed in `THIRDPARTY.md`. Successful compilation alone
 does not clear those distribution requirements.
 
+The native Linux/GNU Cargo entry uses `x64-linux-dynamic` and records
+`OUT_DIR/native/install/lib/libshinki_emu_impacto.so`; packaged Resources sit
+beside the shared library. It retains the original SDL owner and uses `dladdr`
+for the installed resource root. The pinned Linux dependency installation
+and ELF package/load validation are not complete, so ShinkiEMU retains the
+Linux build block and the existing binary-publication restrictions.
+
 ### Typed configuration and acceptance
 
 * `profile`: enum, currently exactly `cc`.
 * `assets_root`: directory containing Steam CC's MPK files; an empty value uses
   `game_path/USRDIR`, or `game_path` when it already names USRDIR.
 * `resources_root`: directory containing `profiles/cc`, `resources/cc` and
-  `src/shaders/opengl`; empty selects the installed Windows core's `Resources`.
+  `src/shaders/opengl`; empty selects the installed dynamic core's `Resources`.
 * `save_root`: required isolated writable directory, outside game assets and
   core resources. It supplies native save, configuration and base paths.
 * `use_backup_archives`: boolean, defaults to true. This explicitly requires

@@ -63,8 +63,8 @@ fn build() -> Result<()> {
     }
     let target = env::var("TARGET")?;
     let host = env::var("HOST")?;
-    if target != "x86_64-pc-windows-msvc" || host != target {
-        return Err(format!("Impacto's embedded adapter requires a native x86_64-pc-windows-msvc host and target (HOST={host}, TARGET={target})").into());
+    if !matches!(target.as_str(), "x86_64-pc-windows-msvc" | "x86_64-unknown-linux-gnu") || host != target {
+        return Err(format!("Impacto's embedded adapter requires a native Windows x64/MSVC or Linux x64/GNU build (HOST={host}, TARGET={target})").into());
     }
     // configure_cmake reads NUM_JOBS. Cap the native build even when Cargo has
     // been started outside xtask with a higher job count.
@@ -80,8 +80,9 @@ fn build() -> Result<()> {
     let vcpkg = required_dir("VCPKG_ROOT")?;
     let installed = required_dir("SHINKI_EMU_VCPKG_INSTALLED")?;
     let triplet = env::var("SHINKI_EMU_VCPKG_TRIPLET")?;
-    if triplet != "x64-windows" {
-        return Err(format!("Impacto requires the x64-windows dependency triplet, got {triplet}").into());
+    let expected_triplet = if target.ends_with("linux-gnu") { "x64-linux-dynamic" } else { "x64-windows" };
+    if triplet != expected_triplet {
+        return Err(format!("Impacto requires the {expected_triplet} dependency triplet, got {triplet}").into());
     }
     let toolchain = vcpkg.join("scripts/buildsystems/vcpkg.cmake");
     require_file(&toolchain)?;
@@ -139,7 +140,11 @@ fn build() -> Result<()> {
     ];
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
-    let library = stage.join("shinki_emu_impacto.dll");
+    let library = stage.join(if target.ends_with("linux-gnu") {
+        "lib/libshinki_emu_impacto.so"
+    } else {
+        "shinki_emu_impacto.dll"
+    });
     require_file(&library)?;
     let resources = stage.join("Resources");
     for path in ["profiles/cc/game.lua", "src/shaders", "resources"] {
@@ -147,11 +152,13 @@ fn build() -> Result<()> {
             return Err(format!("native Impacto install omitted Resources/{path}").into());
         }
     }
-    let import = generate_import_library(&library, &native.join("imports"), &target)?;
-    println!(
-        "cargo:rustc-link-search=native={}",
-        import.parent().ok_or("import library parent")?.display()
-    );
+    let link_directory = if target.ends_with("linux-gnu") {
+        stage.join("lib")
+    } else {
+        generate_import_library(&library, &native.join("imports"), &target)?
+            .parent().ok_or("import library parent")?.to_owned()
+    };
+    println!("cargo:rustc-link-search=native={}", link_directory.display());
     println!("cargo:rustc-link-lib=dylib=shinki_emu_impacto");
 
     let mut manifest = CoreBuildManifest::new("impacto", "native-shared")?;
