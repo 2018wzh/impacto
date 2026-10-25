@@ -73,7 +73,8 @@ fn build() -> Result<()> {
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(4)
         .clamp(1, 4);
-    env::set_var("NUM_JOBS", jobs.to_string());
+    // The build script is single-threaded and has not started native tools yet.
+    unsafe { env::set_var("NUM_JOBS", jobs.to_string()) };
 
     let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
     let source = std::path::absolute(adapter.parent().ok_or("adapter must be in the Impacto checkout")?)?;

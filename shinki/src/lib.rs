@@ -11,7 +11,7 @@ unsafe extern "C" {
 ///
 /// # Safety
 /// `output` must be null or point to writable storage for a core API pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn shinki_emu_query(version: u32, output: *mut *const CoreApi) -> Status {
     unsafe { native_query(version, output) }
 }
