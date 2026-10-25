@@ -38,6 +38,8 @@ This fork adds `IMPACTO_SHINKI_EMU` on native repair baseline
 decoder state for concurrent image loads and fixes ownership of unallocated
 movie-audio planes and their pointer array. The shared core exports the current
 ShinkiEMU C ABI v3 directly: plugin `impacto`, engine family `mages`.
+Upstream release `0.10.8.930` (`3706ddd89d4ad4aed0e32e127355c4251f22e574`)
+is merged over that history, retaining the native repairs and adapter.
 `vendor/shinki-emu-abi/include/shinki_emu.h` is an unchanged byte copy of the
 cbindgen-generated header from ShinkiEMU
 `cb8d9dd22d7d0ab129085b324c94d6dc81fa19e3`,
@@ -90,6 +92,7 @@ cargo xtask build --target x86_64-pc-windows-msvc --core impacto --release
 ```
 
 The independent Cargo entry is `shinki/Cargo.toml` (`shinki-emu-impacto`).
+The adapter uses Rust edition 2024 and requires Rust 1.98 or newer.
 Its `build.rs` validates the host/target and prepared dependencies, calls the
 existing CMake `install` target with at most four jobs, and records the real
 DLL in `OUT_DIR/core-build.json` as `native-shared`. Native objects, installed
