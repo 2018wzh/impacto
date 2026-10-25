@@ -169,6 +169,15 @@ fn build() -> Result<()> {
         source: source.join("THIRDPARTY.md"),
         dest: "licenses/impacto/THIRDPARTY.md".into(),
     });
+    for (path, name) in [
+        ("README.md", "README.md"),
+        ("licenses/NotoSansCJK-OFL.txt", "NotoSansCJK-OFL.txt"),
+    ] {
+        manifest.licenses.push(BuildAsset {
+            source: source.join(path),
+            dest: format!("licenses/impacto/{name}"),
+        });
+    }
     // vcpkg's per-port notices include both DLL and header/static dependencies.
     // Keep the full prepared target installation's notices to cover transitive
     // dependencies without guessing their filenames or linkage.
