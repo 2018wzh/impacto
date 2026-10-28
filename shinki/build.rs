@@ -12,7 +12,7 @@ type Result<T, E = Box<dyn Error>> = std::result::Result<T, E>;
 
 fn required_dir(name: &str) -> Result<PathBuf> {
     let path = PathBuf::from(env::var_os(name).ok_or_else(|| {
-        format!("{name} is required; run cargo xtask deps --target x86_64-pc-windows-msvc --core impacto")
+        format!("{name} is required; run cargo xtask deps for the selected Impacto target")
     })?);
     if !path.is_dir() {
         return Err(format!("{name} directory is missing: {}", path.display()).into());
@@ -22,7 +22,7 @@ fn required_dir(name: &str) -> Result<PathBuf> {
 
 fn require_file(path: &Path) -> Result<()> {
     if !path.is_file() {
-        return Err(format!("missing Impacto build prerequisite: {}; run cargo xtask deps --target x86_64-pc-windows-msvc --core impacto", path.display()).into());
+        return Err(format!("missing Impacto build prerequisite: {}; run cargo xtask deps for the selected target", path.display()).into());
     }
     Ok(())
 }
@@ -54,6 +54,7 @@ fn build() -> Result<()> {
         "VCPKG_ROOT",
         "SHINKI_EMU_VCPKG_INSTALLED",
         "SHINKI_EMU_VCPKG_TRIPLET",
+        "SHINKI_EMU_FFMPEG_INSTALLED",
         "NUM_JOBS",
         "PROFILE",
         "HOST",
@@ -63,8 +64,20 @@ fn build() -> Result<()> {
     }
     let target = env::var("TARGET")?;
     let host = env::var("HOST")?;
-    if target != "x86_64-pc-windows-msvc" || host != target {
-        return Err(format!("Impacto's embedded adapter requires a native x86_64-pc-windows-msvc host and target (HOST={host}, TARGET={target})").into());
+    let supported = matches!(
+        target.as_str(),
+        "x86_64-pc-windows-msvc"
+            | "x86_64-unknown-linux-gnu"
+            | "x86_64-apple-darwin"
+            | "aarch64-apple-darwin"
+            | "aarch64-apple-ios"
+            | "aarch64-apple-ios-sim"
+            | "x86_64-apple-ios"
+            | "aarch64-linux-android"
+            | "x86_64-linux-android"
+    );
+    if !supported {
+        return Err(format!("Impacto's embedded adapter does not support HOST={host}, TARGET={target}").into());
     }
     // configure_cmake reads NUM_JOBS. Cap the native build even when Cargo has
     // been started outside xtask with a higher job count.
@@ -73,7 +86,6 @@ fn build() -> Result<()> {
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(4)
         .clamp(1, 4);
-    // The build script is single-threaded and has not started native tools yet.
     unsafe { env::set_var("NUM_JOBS", jobs.to_string()) };
 
     let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
@@ -81,8 +93,41 @@ fn build() -> Result<()> {
     let vcpkg = required_dir("VCPKG_ROOT")?;
     let installed = required_dir("SHINKI_EMU_VCPKG_INSTALLED")?;
     let triplet = env::var("SHINKI_EMU_VCPKG_TRIPLET")?;
-    if triplet != "x64-windows" {
-        return Err(format!("Impacto requires the x64-windows dependency triplet, got {triplet}").into());
+    let expected_triplet = match target.as_str() {
+        "x86_64-pc-windows-msvc" => "x64-windows",
+        "x86_64-unknown-linux-gnu" => "x64-linux-dynamic",
+        "x86_64-apple-darwin" => "x64-osx",
+        "aarch64-apple-darwin" => "arm64-osx",
+        "aarch64-apple-ios" => "arm64-ios",
+        "aarch64-apple-ios-sim" => "arm64-ios-simulator",
+        "x86_64-apple-ios" => "x64-ios",
+        "aarch64-linux-android" => "arm64-android-ffmpeg",
+        "x86_64-linux-android" => "x64-android-ffmpeg",
+        _ => unreachable!(),
+    };
+    if triplet != expected_triplet {
+        return Err(format!("Impacto requires the {expected_triplet} dependency triplet, got {triplet}").into());
+    }
+    if let Some(raw) = env::var_os("SHINKI_EMU_FFMPEG_INSTALLED") {
+        let ffmpeg = PathBuf::from(raw);
+        if !ffmpeg.is_dir() {
+            return Err(format!("SHINKI_EMU_FFMPEG_INSTALLED directory is missing: {}", ffmpeg.display()).into());
+        }
+        let mut prefixes = vec![installed.join(&triplet), ffmpeg.clone()];
+        if let Some(existing) = env::var_os("CMAKE_PREFIX_PATH") {
+            prefixes.extend(env::split_paths(&existing));
+        }
+        unsafe { env::set_var("CMAKE_PREFIX_PATH", env::join_paths(prefixes)?); }
+        let mut pkgconfig = vec![
+            installed.join(&triplet).join("lib/pkgconfig"),
+            installed.join(&triplet).join("share/pkgconfig"),
+            ffmpeg.join("lib/pkgconfig"),
+            ffmpeg.join("share/pkgconfig"),
+        ];
+        if let Some(existing) = env::var_os("PKG_CONFIG_PATH") {
+            pkgconfig.extend(env::split_paths(&existing));
+        }
+        unsafe { env::set_var("PKG_CONFIG_PATH", env::join_paths(pkgconfig)?); }
     }
     let toolchain = vcpkg.join("scripts/buildsystems/vcpkg.cmake");
     require_file(&toolchain)?;
@@ -94,8 +139,12 @@ fn build() -> Result<()> {
         }
     }
     let share = installed.join(&triplet).join("share");
-    for port in ["sdl3", "avcpp", "ffmpeg", "openal-soft", "libvorbis", "libwebp", "freetype", "harfbuzz"] {
+    let ffmpeg_installed = env::var_os("SHINKI_EMU_FFMPEG_INSTALLED").map(PathBuf::from);
+    for port in ["sdl3", "avcpp", "openal-soft", "libvorbis", "libwebp", "freetype", "harfbuzz"] {
         require_file(&share.join(port).join("copyright"))?;
+    }
+    if ffmpeg_installed.is_none() {
+        require_file(&share.join("ffmpeg").join("copyright"))?;
     }
     let downloads = required_dir("SHINKI_EMU_NATIVE_DOWNLOADS")?;
     let atrac_source = downloads.join("libatrac9");
@@ -140,7 +189,16 @@ fn build() -> Result<()> {
     ];
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
-    let library = stage.join("shinki_emu_impacto.dll");
+    let library_name = if target == "x86_64-pc-windows-msvc" {
+        "shinki_emu_impacto.dll"
+    } else if target == "x86_64-unknown-linux-gnu"
+        || target.ends_with("-linux-android")
+    {
+        "shinki_emu_impacto.so"
+    } else {
+        "shinki_emu_impacto.dylib"
+    };
+    let library = stage.join(library_name);
     require_file(&library)?;
     let resources = stage.join("Resources");
     for path in ["profiles/cc/game.lua", "src/shaders", "resources"] {
@@ -148,11 +206,14 @@ fn build() -> Result<()> {
             return Err(format!("native Impacto install omitted Resources/{path}").into());
         }
     }
-    let import = generate_import_library(&library, &native.join("imports"), &target)?;
-    println!(
-        "cargo:rustc-link-search=native={}",
-        import.parent().ok_or("import library parent")?.display()
-    );
+    println!("cargo:rustc-link-search=native={}", stage.display());
+    if target == "x86_64-pc-windows-msvc" {
+        let import = generate_import_library(&library, &native.join("imports"), &target)?;
+        println!(
+            "cargo:rustc-link-search=native={}",
+            import.parent().ok_or("import library parent")?.display()
+        );
+    }
     println!("cargo:rustc-link-lib=dylib=shinki_emu_impacto");
 
     let mut manifest = CoreBuildManifest::new("impacto", "native-shared")?;
@@ -197,6 +258,27 @@ fn build() -> Result<()> {
                 source: copyright,
                 dest: format!("licenses/impacto/vcpkg/{name}/copyright"),
             });
+        }
+    }
+    if let Some(ffmpeg) = ffmpeg_installed {
+        let ffmpeg_share = ffmpeg.join("share");
+        let mut ffmpeg_ports = fs::read_dir(&ffmpeg_share)?.collect::<std::io::Result<Vec<_>>>()?;
+        ffmpeg_ports.sort_by_key(|entry| entry.file_name());
+        for port in ffmpeg_ports {
+            if !port.file_type()?.is_dir() {
+                continue;
+            }
+            let copyright = port.path().join("copyright");
+            if copyright.is_file() {
+                let name = port
+                    .file_name()
+                    .into_string()
+                    .map_err(|_| "non-UTF-8 FFmpeg port name")?;
+                manifest.licenses.push(BuildAsset {
+                    source: copyright,
+                    dest: format!("licenses/impacto/vcpkg/ffmpeg/{name}/copyright"),
+                });
+            }
         }
     }
     write_core_build_manifest(&manifest)?;

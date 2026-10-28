@@ -1428,7 +1428,13 @@ target_precompile_headers(impacto PRIVATE
 
 # binary install
 
-if (ANDROID)
+if (IMPACTO_SHINKI_EMU)
+    install(TARGETS impacto
+        RUNTIME DESTINATION .
+        LIBRARY DESTINATION .
+        ARCHIVE DESTINATION lib
+    )
+elseif (ANDROID)
     install(TARGETS impacto LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI})
 elseif (NX)
     find_program(ELF2NRO elf2nro HINTS "$ENV{DEVKITPRO}/tools/bin")
