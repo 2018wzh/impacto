@@ -172,6 +172,10 @@ fn build() -> Result<()> {
         ),
         ("IMPACTO_SHINKI_EMU".into(), "ON".into()),
         (
+            "IMPACTO_SHINKI_EMU_STATIC".into(),
+            if cfg!(feature = "static") { "ON" } else { "OFF" }.into(),
+        ),
+        (
             "SHINKI_EMU_ABI_INCLUDE_DIR".into(),
             source.join("vendor/shinki-emu-abi/include").to_string_lossy().into_owned(),
         ),
@@ -189,16 +193,23 @@ fn build() -> Result<()> {
     ];
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
-    let library_name = if target == "x86_64-pc-windows-msvc" {
-        "shinki_emu_impacto.dll"
-    } else if target == "x86_64-unknown-linux-gnu"
-        || target.ends_with("-linux-android")
-    {
-        "shinki_emu_impacto.so"
+    let library = if cfg!(feature = "static") {
+        let name = if target == "x86_64-pc-windows-msvc" {
+            "shinki_emu_impacto.lib"
+        } else {
+            "libshinki_emu_impacto.a"
+        };
+        stage.join("lib").join(name)
     } else {
-        "shinki_emu_impacto.dylib"
+        let name = if target == "x86_64-pc-windows-msvc" {
+            "shinki_emu_impacto.dll"
+        } else if target == "x86_64-unknown-linux-gnu" || target.ends_with("-linux-android") {
+            "shinki_emu_impacto.so"
+        } else {
+            "shinki_emu_impacto.dylib"
+        };
+        stage.join(name)
     };
-    let library = stage.join(library_name);
     require_file(&library)?;
     let resources = stage.join("Resources");
     for path in ["profiles/cc/game.lua", "src/shaders", "resources"] {
@@ -206,15 +217,20 @@ fn build() -> Result<()> {
             return Err(format!("native Impacto install omitted Resources/{path}").into());
         }
     }
-    println!("cargo:rustc-link-search=native={}", stage.display());
-    if target == "x86_64-pc-windows-msvc" {
-        let import = generate_import_library(&library, &native.join("imports"), &target)?;
-        println!(
-            "cargo:rustc-link-search=native={}",
-            import.parent().ok_or("import library parent")?.display()
-        );
+    println!("cargo:rustc-link-search=native={}", stage.join("lib").display());
+    if cfg!(feature = "static") {
+        println!("cargo:rustc-link-lib=static=shinki_emu_impacto");
+    } else {
+        println!("cargo:rustc-link-search=native={}", stage.display());
+        if target == "x86_64-pc-windows-msvc" {
+            let import = generate_import_library(&library, &native.join("imports"), &target)?;
+            println!(
+                "cargo:rustc-link-search=native={}",
+                import.parent().ok_or("import library parent")?.display()
+            );
+        }
+        println!("cargo:rustc-link-lib=dylib=shinki_emu_impacto");
     }
-    println!("cargo:rustc-link-lib=dylib=shinki_emu_impacto");
 
     let mut manifest = CoreBuildManifest::new("impacto", "native-shared")?;
     manifest.native_library = Some(library);
