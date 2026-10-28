@@ -421,21 +421,8 @@ void InitializeNative(Session& s) {
   Shinki::CheckCancellation();
   SDL_SetLogOutputFunction(NativeLog, nullptr);
   SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
-  UserConfig::CommonSettings.LoggingToFile = false;
-  UserConfig::CommonSettings.LoggingToConsole = true;
-  UserConfig::CommonSettings.LogLvl = LogLevel::Info;
-  UserConfig::CommonSettings.LogFile.clear();
-  UserConfig::CommonSettings.ResolutionWidth = 1920;
-  UserConfig::CommonSettings.ResolutionHeight = 1080;
-  UserConfig::AdvancedSettings = {};
-  UserConfig::GameSettings.clear();
   UserConfig::UserConfigPath.clear();
   UserConfig::SetActiveGame("cc");
-  UserConfig::ActiveGameSettings() = {};
-  UserConfig::ActiveGameSettings().UsePatch = false;
-  UserConfig::ActiveGameSettings().ResolutionWidth = 1920;
-  UserConfig::ActiveGameSettings().ResolutionHeight = 1080;
-  UserConfig::ActiveGameSettings().Display = DisplayMode::Windowed;
   Profile::Init();
   auto r = s.settings.resources.generic_string(),
        a = s.settings.assets.generic_string();
@@ -448,6 +435,15 @@ void InitializeNative(Session& s) {
   Profile::GameDefinitions.clear();
   Profile::GameDefinitions["cc"] = {
       .GameProfile = r + "/profiles/cc-steam/game.lua", .Name = "CHAOS;CHILD"};
+  UserConfig::Configure();
+  // CPU frame ownership requires this backing extent, independent of Host size.
+  UserConfig::CommonSettings.ResolutionWidth = 1920;
+  UserConfig::CommonSettings.ResolutionHeight = 1080;
+  UserConfig::ActiveGameSettings().ResolutionWidth = 1920;
+  UserConfig::ActiveGameSettings().ResolutionHeight = 1080;
+  UserConfig::ActiveGameSettings().Display = DisplayMode::Windowed;
+  // The packaged CC profile has no patch mount or patch-profile definition.
+  UserConfig::ActiveGameSettings().UsePatch = false;
   Shinki::CheckCancellation();
   Game::ShouldQuit = false;
   Game::Init();

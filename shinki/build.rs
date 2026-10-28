@@ -1,5 +1,6 @@
 use shinki_emu_build::{
-    configure_cmake, generate_import_library, write_core_build_manifest, BuildAsset, CoreBuildManifest,
+    BuildAsset, CoreBuildManifest, configure_cmake, generate_import_library,
+    write_core_build_manifest,
 };
 use std::{
     env,
@@ -22,7 +23,11 @@ fn required_dir(name: &str) -> Result<PathBuf> {
 
 fn require_file(path: &Path) -> Result<()> {
     if !path.is_file() {
-        return Err(format!("missing Impacto build prerequisite: {}; run cargo xtask deps for the selected target", path.display()).into());
+        return Err(format!(
+            "missing Impacto build prerequisite: {}; run cargo xtask deps for the selected target",
+            path.display()
+        )
+        .into());
     }
     Ok(())
 }
@@ -77,7 +82,10 @@ fn build() -> Result<()> {
             | "x86_64-linux-android"
     );
     if !supported {
-        return Err(format!("Impacto's embedded adapter does not support HOST={host}, TARGET={target}").into());
+        return Err(format!(
+            "Impacto's embedded adapter does not support HOST={host}, TARGET={target}"
+        )
+        .into());
     }
     // configure_cmake reads NUM_JOBS. Cap the native build even when Cargo has
     // been started outside xtask with a higher job count.
@@ -88,8 +96,13 @@ fn build() -> Result<()> {
         .clamp(1, 4);
     unsafe { env::set_var("NUM_JOBS", jobs.to_string()) };
 
-    let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
-    let source = std::path::absolute(adapter.parent().ok_or("adapter must be in the Impacto checkout")?)?;
+    let adapter =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
+    let source = std::path::absolute(
+        adapter
+            .parent()
+            .ok_or("adapter must be in the Impacto checkout")?,
+    )?;
     let vcpkg = required_dir("VCPKG_ROOT")?;
     let installed = required_dir("SHINKI_EMU_VCPKG_INSTALLED")?;
     let triplet = env::var("SHINKI_EMU_VCPKG_TRIPLET")?;
@@ -106,18 +119,27 @@ fn build() -> Result<()> {
         _ => unreachable!(),
     };
     if triplet != expected_triplet {
-        return Err(format!("Impacto requires the {expected_triplet} dependency triplet, got {triplet}").into());
+        return Err(format!(
+            "Impacto requires the {expected_triplet} dependency triplet, got {triplet}"
+        )
+        .into());
     }
     if let Some(raw) = env::var_os("SHINKI_EMU_FFMPEG_INSTALLED") {
         let ffmpeg = PathBuf::from(raw);
         if !ffmpeg.is_dir() {
-            return Err(format!("SHINKI_EMU_FFMPEG_INSTALLED directory is missing: {}", ffmpeg.display()).into());
+            return Err(format!(
+                "SHINKI_EMU_FFMPEG_INSTALLED directory is missing: {}",
+                ffmpeg.display()
+            )
+            .into());
         }
         let mut prefixes = vec![installed.join(&triplet), ffmpeg.clone()];
         if let Some(existing) = env::var_os("CMAKE_PREFIX_PATH") {
             prefixes.extend(env::split_paths(&existing));
         }
-        unsafe { env::set_var("CMAKE_PREFIX_PATH", env::join_paths(prefixes)?); }
+        unsafe {
+            env::set_var("CMAKE_PREFIX_PATH", env::join_paths(prefixes)?);
+        }
         let mut pkgconfig = vec![
             installed.join(&triplet).join("lib/pkgconfig"),
             installed.join(&triplet).join("share/pkgconfig"),
@@ -127,7 +149,9 @@ fn build() -> Result<()> {
         if let Some(existing) = env::var_os("PKG_CONFIG_PATH") {
             pkgconfig.extend(env::split_paths(&existing));
         }
-        unsafe { env::set_var("PKG_CONFIG_PATH", env::join_paths(pkgconfig)?); }
+        unsafe {
+            env::set_var("PKG_CONFIG_PATH", env::join_paths(pkgconfig)?);
+        }
     }
     let toolchain = vcpkg.join("scripts/buildsystems/vcpkg.cmake");
     require_file(&toolchain)?;
@@ -140,7 +164,15 @@ fn build() -> Result<()> {
     }
     let share = installed.join(&triplet).join("share");
     let ffmpeg_installed = env::var_os("SHINKI_EMU_FFMPEG_INSTALLED").map(PathBuf::from);
-    for port in ["sdl3", "avcpp", "openal-soft", "libvorbis", "libwebp", "freetype", "harfbuzz"] {
+    for port in [
+        "sdl3",
+        "avcpp",
+        "openal-soft",
+        "libvorbis",
+        "libwebp",
+        "freetype",
+        "harfbuzz",
+    ] {
         require_file(&share.join(port).join("copyright"))?;
     }
     if ffmpeg_installed.is_none() {
@@ -157,8 +189,12 @@ fn build() -> Result<()> {
     let atrac_patch = source.join("vendor/patches/LibAtrac9/CMakeLists.txt");
     require_file(&atrac_patch)?;
     println!("cargo:rerun-if-changed={}", atrac_patch.display());
-    let atrac = PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR is required")?)
-        .join("src/libatrac9");
+    println!(
+        "cargo:rerun-if-changed={}",
+        source.join("src/shinki/core.cpp").display()
+    );
+    let atrac =
+        PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR is required")?).join("src/libatrac9");
     if atrac.exists() {
         fs::remove_dir_all(&atrac)?;
     }
@@ -173,11 +209,19 @@ fn build() -> Result<()> {
         ("IMPACTO_SHINKI_EMU".into(), "ON".into()),
         (
             "IMPACTO_SHINKI_EMU_STATIC".into(),
-            if cfg!(feature = "static") { "ON" } else { "OFF" }.into(),
+            if cfg!(feature = "static") {
+                "ON"
+            } else {
+                "OFF"
+            }
+            .into(),
         ),
         (
             "SHINKI_EMU_ABI_INCLUDE_DIR".into(),
-            source.join("vendor/shinki-emu-abi/include").to_string_lossy().into_owned(),
+            source
+                .join("vendor/shinki-emu-abi/include")
+                .to_string_lossy()
+                .into_owned(),
         ),
         (
             "FETCHCONTENT_SOURCE_DIR_LIBATRAC9".into(),
@@ -217,7 +261,10 @@ fn build() -> Result<()> {
             return Err(format!("native Impacto install omitted Resources/{path}").into());
         }
     }
-    println!("cargo:rustc-link-search=native={}", stage.join("lib").display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        stage.join("lib").display()
+    );
     if cfg!(feature = "static") {
         println!("cargo:rustc-link-lib=static=shinki_emu_impacto");
     } else {
