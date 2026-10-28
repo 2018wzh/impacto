@@ -11,6 +11,7 @@
 #include "../profile/basepaths.h"
 #include "../profile/gamedefinitions.h"
 #include "../profile/game.h"
+#include "../io/filemeta.h"
 #include "../profile/sprites.h"
 #include "../profile/fonts.h"
 #include "../profile/animations.h"
@@ -102,7 +103,7 @@ ShinkiEmuStatus Guard(ShinkiEmuError* e, F&& f) noexcept {
 }
 struct Cancelled {};
 struct Settings {
-  fs::path assets, resources, saves, movie_order;
+  fs::path assets, resources, config_dir, movie_order;
   bool backups = true;
 };
 struct Frame {
@@ -245,11 +246,6 @@ void ValidateAssets(Settings const& s) {
         "resources_root must contain profiles/cc, profiles/cc-steam, "
         "resources/cc and "
         "src/shaders/opengl");
-  if (Within(s.saves, s.assets) || Within(s.assets, s.saves) ||
-      s.saves == s.assets || Within(s.saves, s.resources) ||
-      s.saves == s.resources)
-    throw std::invalid_argument(
-        "save_root must be isolated from assets and core resources");
 }
 ShinkiEmuSurfaceInfo Surface(uint32_t w = 1920, uint32_t h = 1080) {
   return {ShinkiEmuSURFACE_CPU,
@@ -434,9 +430,7 @@ void InitializeNative(Session& s) {
   UserConfig::CommonSettings.ResolutionHeight = 1080;
   UserConfig::AdvancedSettings = {};
   UserConfig::GameSettings.clear();
-  UserConfig::PatchProfileOverride.clear();
-  UserConfig::UserConfigPath =
-      (s.settings.saves / "userconfig.toml").generic_string();
+  UserConfig::UserConfigPath.clear();
   UserConfig::SetActiveGame("cc");
   UserConfig::ActiveGameSettings() = {};
   UserConfig::ActiveGameSettings().UsePatch = false;
@@ -446,10 +440,10 @@ void InitializeNative(Session& s) {
   Profile::Init();
   auto r = s.settings.resources.generic_string(),
        a = s.settings.assets.generic_string(),
-       save = s.settings.saves.generic_string();
+       config_dir = s.settings.config_dir.generic_string();
   Lua("root.BasePaths={RootInstallDir=" + LuaString(r) + ",RootGamedataDir=" +
       LuaString(a) + ",RootProfilesDir=" + LuaString(r + "/profiles") +
-      ",RootPatchesDir=\"\",RootSavesDir=" + LuaString(save) + "}");
+      ",RootPatchesDir=\"\",RootSavesDir=" + LuaString(config_dir) + "}");
   lua_getglobal(Profile::LuaState, "root");
   Profile::BasePaths::Configure();
   lua_pop(Profile::LuaState, 1);
@@ -593,13 +587,11 @@ ShinkiEmuStatus Describe(ShinkiEmuDescriptor* out, ShinkiEmuError* e) noexcept {
     static ShinkiEmuBytes choices[] = {Bytes("cc")};
     static ShinkiEmuBytes formats[] = {Bytes("mpk")};
     static auto fields = [] {
-      std::array<ShinkiEmuConfigField, 6> f{
+      std::array<ShinkiEmuConfigField, 5> f{
           Field("profile", "Native game profile", ShinkiEmuVALUE_ENUM, "cc"),
           Field("assets_root", "CC USRDIR (empty: game/USRDIR)",
                 ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
           Field("resources_root", "Resource root (empty: core/Resources)",
-                ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
-          Field("save_root", "Isolated ShinkiEMU save directory",
                 ShinkiEmuVALUE_STRING, "", ShinkiEmuCONFIG_FLAG_DIRECTORY_PATH),
           Field("use_backup_archives", "Use script_bak/system_bak archives",
                 ShinkiEmuVALUE_BOOL),
@@ -608,8 +600,8 @@ ShinkiEmuStatus Describe(ShinkiEmuDescriptor* out, ShinkiEmuError* e) noexcept {
       f[0].choices = choices;
       f[0].choice_labels = choices;
       f[0].choice_count = 1;
-      f[4].default_value.integer = 1;
-      f[4].max_bytes = 0;
+      f[3].default_value.integer = 1;
+      f[3].max_bytes = 0;
       return f;
     }();
     *out = {{sizeof(*out), 3},
@@ -709,22 +701,18 @@ ShinkiEmuStatus Open(ShinkiEmuOpenRequest const* r, ShinkiEmuOpenResult* out,
           if (!text.empty()) s->settings.assets = Absolute(text);
         } else if (id == "resources_root") {
           if (!text.empty()) s->settings.resources = Absolute(text);
-        } else if (id == "save_root")
-          s->settings.saves = Absolute(text);
-        else if (id == "movie_order") {
+        } else if (id == "movie_order") {
           if (!text.empty()) s->settings.movie_order = Absolute(text);
         } else
           throw std::invalid_argument("Unknown configuration field: " + id);
       }
     }
-    if (s->settings.saves.empty())
-      throw std::invalid_argument(
-          "save_root is required; native saves must be isolated");
+    s->settings.config_dir = fs::path(Io::GetPlatformConfigDir());
     if (s->settings.resources.empty())
       s->settings.resources = DefaultResourceRoot();
     ValidateAssets(s->settings);
     for (auto& frame : s->frames) frame = FrameRef(new Frame());
-    fs::create_directories(s->settings.saves);
+    fs::create_directories(s->settings.config_dir);
     if (s->host.cancellation.is_cancelled(s->host.cancellation.context,
                                           s->epoch))
       return Error(e, ShinkiEmuCANCELLED, "impacto.cancelled", "Open cancelled");

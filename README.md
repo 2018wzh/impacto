@@ -129,8 +129,8 @@ does not clear those distribution requirements.
   `game_path/USRDIR`, or `game_path` when it already names USRDIR.
 * `resources_root`: directory containing `profiles/cc`, `resources/cc` and
   `src/shaders/opengl`; empty selects the installed Windows core's `Resources`.
-* `save_root`: required isolated writable directory, outside game assets and
-  core resources. It supplies native save, configuration and base paths.
+* `userconfig.toml`: upstream Impacto resolves this file in the platform preference directory, `%APPDATA%/Committee of Zero/Impacto` on Windows. The adapter leaves this resolution unchanged.
+* The selected CC profile declares `SaveDataType.None`; it has no native profile save files. Other profiles, when enabled, resolve their save paths from the upstream profile and platform configuration.
 * `use_backup_archives`: boolean, defaults to true. This explicitly requires
   `script_bak.mpk` and `system_bak.mpk`; false selects the installed MPKs.
   Backup filenames alone do not establish patch compatibility.
@@ -145,8 +145,8 @@ rejected. Neither game assets nor pre-existing user saves/configuration are
 modified. The unofficial patch executables are not run.
 
 For an ABI driver, configure `profile=cc`, the source checkout as
-`resources_root`, the real Steam `USRDIR` as `assets_root`, and a private
-directory as `save_root`. Native bindings are Enter/Space for confirm,
+`resources_root`, and the real Steam `USRDIR` as `assets_root`. Impacto's
+`userconfig.toml` remains in its platform preference directory. Native bindings are Enter/Space for confirm,
 arrow keys for selection, Backspace/KeyX for cancel, Digit1 or secondary mouse
 button for the native Start/menu action, and ControlLeft for held skip.
 Use real frames to decide when to confirm New Game; blind timed key presses
