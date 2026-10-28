@@ -17,6 +17,7 @@ string(STRIP "${APP_VERSION}" APP_VERSION)
 string(REGEX REPLACE "\\.$" "" APP_VERSION "${APP_VERSION}")
 
 project("impacto" VERSION ${APP_VERSION})
+option(IMPACTO_SHINKI_EMU "Build the ShinkiEMU C ABI v3 shared core" OFF)
 option(IMPACTO_SHINKI_EMU_STATIC "Build the ShinkiEMU C ABI v3 static core" OFF)
 if(IMPACTO_SHINKI_EMU)
     set(IMPACTO_DISABLE_VULKAN ON)
