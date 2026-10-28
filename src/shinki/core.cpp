@@ -11,7 +11,6 @@
 #include "../profile/basepaths.h"
 #include "../profile/gamedefinitions.h"
 #include "../profile/game.h"
-#include "../io/filemeta.h"
 #include "../profile/sprites.h"
 #include "../profile/fonts.h"
 #include "../profile/animations.h"
@@ -103,7 +102,7 @@ ShinkiEmuStatus Guard(ShinkiEmuError* e, F&& f) noexcept {
 }
 struct Cancelled {};
 struct Settings {
-  fs::path assets, resources, config_dir, movie_order;
+  fs::path assets, resources, movie_order;
   bool backups = true;
 };
 struct Frame {
@@ -439,11 +438,10 @@ void InitializeNative(Session& s) {
   UserConfig::ActiveGameSettings().Display = DisplayMode::Windowed;
   Profile::Init();
   auto r = s.settings.resources.generic_string(),
-       a = s.settings.assets.generic_string(),
-       config_dir = s.settings.config_dir.generic_string();
+       a = s.settings.assets.generic_string();
   Lua("root.BasePaths={RootInstallDir=" + LuaString(r) + ",RootGamedataDir=" +
       LuaString(a) + ",RootProfilesDir=" + LuaString(r + "/profiles") +
-      ",RootPatchesDir=\"\",RootSavesDir=" + LuaString(config_dir) + "}");
+      ",RootPatchesDir=\"\",RootSavesDir=" + LuaString(r + "/saves") + "}");
   lua_getglobal(Profile::LuaState, "root");
   Profile::BasePaths::Configure();
   lua_pop(Profile::LuaState, 1);
@@ -707,12 +705,10 @@ ShinkiEmuStatus Open(ShinkiEmuOpenRequest const* r, ShinkiEmuOpenResult* out,
           throw std::invalid_argument("Unknown configuration field: " + id);
       }
     }
-    s->settings.config_dir = fs::path(Io::GetPlatformConfigDir());
     if (s->settings.resources.empty())
       s->settings.resources = DefaultResourceRoot();
     ValidateAssets(s->settings);
     for (auto& frame : s->frames) frame = FrameRef(new Frame());
-    fs::create_directories(s->settings.config_dir);
     if (s->host.cancellation.is_cancelled(s->host.cancellation.context,
                                           s->epoch))
       return Error(e, ShinkiEmuCANCELLED, "impacto.cancelled", "Open cancelled");

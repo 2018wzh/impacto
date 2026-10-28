@@ -130,7 +130,7 @@ does not clear those distribution requirements.
 * `resources_root`: directory containing `profiles/cc`, `resources/cc` and
   `src/shaders/opengl`; empty selects the installed Windows core's `Resources`.
 * `userconfig.toml`: upstream Impacto resolves this file in the platform preference directory, `%APPDATA%/Committee of Zero/Impacto` on Windows. The adapter leaves this resolution unchanged.
-* The selected CC profile declares `SaveDataType.None`; it has no native profile save files. Other profiles, when enabled, resolve their save paths from the upstream profile and platform configuration.
+* The selected CC profile declares `SaveDataType.None`; it has no native profile save files. The adapter's `RootSavesDir` is `<resources_root>/saves`, matching the upstream basepaths sample's `./saves` relative to the engine resources.
 * `use_backup_archives`: boolean, defaults to true. This explicitly requires
   `script_bak.mpk` and `system_bak.mpk`; false selects the installed MPKs.
   Backup filenames alone do not establish patch compatibility.
@@ -140,9 +140,14 @@ does not clear those distribution requirements.
   beside the game. Without a mapping, a movie request fails explicitly. The
   adapter never guesses IDs from a directory sort.
 
+The removed `save_root` was user-selected. With the game closed, copy
+`<old-save-root>/userconfig.toml` to the platform preference directory only when
+the destination does not exist. Keep existing native configuration. No guessed
+migration root or unwritable-directory fallback is added.
+
 Unknown/duplicate fields, mismatched types and unsupported render extents are
-rejected. Neither game assets nor pre-existing user saves/configuration are
-modified. The unofficial patch executables are not run.
+rejected. The adapter uses the original user configuration location and native
+configuration I/O. The unofficial patch executables are not run.
 
 For an ABI driver, configure `profile=cc`, the source checkout as
 `resources_root`, and the real Steam `USRDIR` as `assets_root`. Impacto's
