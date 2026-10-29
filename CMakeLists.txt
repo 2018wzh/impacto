@@ -1433,7 +1433,9 @@ target_precompile_headers(impacto PRIVATE
 
 # binary install
 
-if (IMPACTO_SHINKI_EMU AND WIN32)
+if (IMPACTO_SHINKI_EMU_STATIC)
+    install(TARGETS impacto atrac9 ARCHIVE DESTINATION lib)
+elseif (IMPACTO_SHINKI_EMU AND WIN32)
     install(TARGETS impacto RUNTIME DESTINATION .)
     install(FILES $<TARGET_RUNTIME_DLLS:impacto> DESTINATION .)
     if(COMMAND x_vcpkg_install_local_dependencies)
@@ -1441,26 +1443,23 @@ if (IMPACTO_SHINKI_EMU AND WIN32)
     endif()
 elseif (IMPACTO_SHINKI_EMU)
     if (LINUX)
-        set_property(
-            TARGET impacto
-            PROPERTY INSTALL_RPATH
-            "$ORIGIN/"
-            "$ORIGIN/lib"
-            )
+        set_property(TARGET impacto PROPERTY INSTALL_RPATH "$ORIGIN/lib")
+    elseif (APPLE)
+        set_property(TARGET impacto PROPERTY INSTALL_RPATH "@loader_path/lib")
     endif()
     LIST(APPEND post_exclude_regexes "^/lib" "^/usr" "^/bin" "libvulkan\\.so(\\..*)?")
     install(TARGETS impacto atrac9
-        RUNTIME_DEPENDENCIES
-        POST_EXCLUDE_REGEXES ${post_exclude_regexes}
+        RUNTIME_DEPENDENCY_SET impacto_runtime_deps
         RUNTIME DESTINATION .
+        LIBRARY DESTINATION .
+        FRAMEWORK DESTINATION .
+    )
+    install(RUNTIME_DEPENDENCY_SET impacto_runtime_deps
+        POST_EXCLUDE_REGEXES ${post_exclude_regexes}
+        RUNTIME DESTINATION ./lib
         LIBRARY DESTINATION ./lib
         FRAMEWORK DESTINATION ./lib
     )
-    if (APPLE)
-        install(TARGETS atrac9
-            LIBRARY DESTINATION Impacto.app/Contents/Frameworks
-        )
-    endif()
 elseif (ANDROID)
     install(TARGETS impacto LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI})
 elseif (NX)
