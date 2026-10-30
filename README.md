@@ -49,6 +49,8 @@ license texts. CMake uses this fixed copy by default. An explicit
 `SHINKI_EMU_ABI_INCLUDE_DIR` override supports local integration; no second
 interface or generated-header edits are maintained.
 
+Apple core builds retain the `shinki_emu_impacto` library identity instead of the standalone app's `Impacto` bundle name. Static archives use CMake's platform archive prefix (`libshinki_emu_impacto.a` on Apple); shared adapters keep their prefix-free names. Explicit Xcode/vcpkg deployment targets take precedence over the standalone macOS default. The native adapter already accepts both macOS architectures and all three iOS targets; platform acceptance still requires the ShinkiEMU build, packaging and Manager embedding gates.
+
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
 OpenAL audio and FFmpeg players. It renders into a hidden hardware GL context,
 reads the final 1920x1080 backbuffer and publishes immutable RGBA CPU leases.
