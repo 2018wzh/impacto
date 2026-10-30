@@ -1,0 +1,22 @@
+diff --git a/glib/meson.build b/glib/meson.build
+index 209bcbf..2db7d57 100644
+--- a/glib/meson.build
++++ b/glib/meson.build
+@@ -559,9 +559,14 @@ else
+   gdb_install = false
+ endif
+ 
+-# XXX: We add a leading './' because glib_libdir is an absolute path and we
+-# need it to be a relative path so that join_paths appends it to the end.
+-gdb_install_dir = join_paths(glib_datadir, 'gdb', 'auto-load', './' + glib_libdir)
++if build_machine.system() == 'windows' and host_system == 'android'
++  gdb_install_dir = join_paths(glib_datadir, 'gdb', 'auto-load', get_option('libdir'))
++else
++  # XXX: We add a leading './' because glib_libdir is an absolute path and we
++  # need it to be a relative path so that join_paths appends it to the end.
++  gdb_install_dir = join_paths(glib_datadir, 'gdb', 'auto-load', './' +
++                               glib_libdir)
++endif
+ 
+ configure_file(
+   input: 'libglib-gdb.py.in',

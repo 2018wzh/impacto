@@ -1,5 +1,5 @@
 use shinki_emu_build::{
-    configure_cmake, generate_import_library, link_apple_static_core, native_vcpkg_installation,
+    configure_cmake, generate_import_library, link_android_static_core, link_apple_static_core, native_vcpkg_installation,
     write_core_build_manifest, BuildAsset, CoreBuildManifest,
 };
 use std::{
@@ -222,6 +222,9 @@ fn build() -> Result<()> {
     println!("cargo:rustc-link-search=native={}", stage.join("lib").display());
     let library = if cfg!(feature = "static") && target.contains("apple") {
         link_apple_static_core("impacto", &native, &[installed.join(&triplet)])?
+    } else if cfg!(feature = "static") && target.ends_with("-linux-android") {
+        link_android_static_core(&native, &[installed.join(&triplet)])?;
+        library
     } else if cfg!(feature = "static") {
         println!("cargo:rustc-link-lib=static=shinki_emu_impacto");
         library

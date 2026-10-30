@@ -814,6 +814,19 @@ target_include_directories(clHCA PUBLIC vendor/clHCA)
 
 add_library(minilua STATIC vendor/minilua/minilua_impl.c)
 target_include_directories(minilua PUBLIC vendor)
+if(IMPACTO_SHINKI_EMU_STATIC)
+    # The Manager also links Luau. Namespace this private Lua implementation
+    # at compile time so neither VM can resolve calls to the other's ABI.
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/minilua/minilua.h"
+         minilua_exports REGEX "^(LUA_API|LUALIB_API|LUAMOD_API).*[()]lua")
+    foreach(declaration IN LISTS minilua_exports)
+        string(REGEX MATCH "[(](lua[A-Za-z0-9_]+)[)]" symbol "${declaration}")
+        if(symbol)
+            target_compile_definitions(minilua PUBLIC
+                "${CMAKE_MATCH_1}=shinki_impacto_${CMAKE_MATCH_1}")
+        endif()
+    endforeach()
+endif()
 
 add_library(pcg STATIC vendor/pcg/src/pcg_basic.c)
 target_include_directories(pcg PUBLIC vendor/pcg/include)
@@ -1441,7 +1454,7 @@ target_precompile_headers(impacto PRIVATE
 # binary install
 
 if (IMPACTO_SHINKI_EMU_STATIC)
-    install(TARGETS impacto atrac9 ARCHIVE DESTINATION lib)
+    install(TARGETS impacto ${Impacto_Lib_Targets} atrac9 ARCHIVE DESTINATION lib)
 elseif (IMPACTO_SHINKI_EMU AND WIN32)
     install(TARGETS impacto RUNTIME DESTINATION .)
     install(FILES $<TARGET_RUNTIME_DLLS:impacto> DESTINATION .)
