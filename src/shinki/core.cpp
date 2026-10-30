@@ -49,6 +49,8 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#elif defined(__APPLE__)
+#include <dlfcn.h>
 #endif
 
 namespace {
@@ -662,6 +664,15 @@ fs::path DefaultResourceRoot() {
   return fs::weakly_canonical(
       fs::path(std::wstring_view(path.data(), length)).parent_path() /
       "Resources");
+#elif defined(__APPLE__)
+  Dl_info info{};
+  if (!dladdr(reinterpret_cast<const void*>(&DefaultResourceRoot), &info) || !info.dli_fname)
+    throw std::invalid_argument("Cannot locate the Apple core resource bundle");
+  auto root = fs::absolute(fs::path(info.dli_fname)).parent_path();
+#if defined(SHINKI_EMU_STATIC_CORE)
+  root /= "cores/impacto";
+#endif
+  return fs::weakly_canonical(root / "Resources");
 #else
   throw std::invalid_argument("resources_root is required on this platform");
 #endif
@@ -1076,7 +1087,9 @@ shinki_emu_impacto_query(uint32_t version, ShinkiEmuCoreApi const** out) noexcep
   *out = &Api;
   return ShinkiEmuOK;
 }
+#if !defined(SHINKI_EMU_STATIC_CORE)
 SHINKI_EMU_EXPORT ShinkiEmuStatus
 shinki_emu_query(uint32_t version, ShinkiEmuCoreApi const** out) noexcept {
   return shinki_emu_impacto_query(version, out);
 }
+#endif

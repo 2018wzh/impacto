@@ -51,6 +51,8 @@ interface or generated-header edits are maintained.
 
 Apple core builds retain the `shinki_emu_impacto` library identity instead of the standalone app's `Impacto` bundle name. Static archives use CMake's platform archive prefix (`libshinki_emu_impacto.a` on Apple); shared adapters keep their prefix-free names. Explicit Xcode/vcpkg deployment targets take precedence over the standalone macOS default. The native adapter already accepts both macOS architectures and all three iOS targets; platform acceptance still requires the ShinkiEMU build, packaging and Manager embedding gates.
 
+The Cargo `static` feature builds a static adapter and codec archive, suppresses the generic dynamic query export, and records `native-static` plus runtime resources in `core-build.json`. Apple static builds use the shared native archive/link-closure helper. iOS resources are read from the Manager bundle's `cores/impacto/Resources`; macOS dylibs resolve their adjacent `Resources` directory.
+
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
 OpenAL audio and FFmpeg players. It renders into a hidden hardware GL context,
 reads the final 1920x1080 backbuffer and publishes immutable RGBA CPU leases.
@@ -103,7 +105,7 @@ is never an install destination. The Rust rlib binds the native query table,
 while the distributable DLL exports `shinki_emu_query`.
 
 For a direct Cargo invocation, dependency preparation must supply `VCPKG_ROOT`,
-`SHINKI_EMU_VCPKG_INSTALLED`, `SHINKI_EMU_VCPKG_TRIPLET=x64-windows` and
+`SHINKI_EMU_NATIVE_VCPKG_ROOT` (containing `impacto/installed`), `SHINKI_EMU_VCPKG_TRIPLET=x64-windows` and
 `SHINKI_EMU_NATIVE_DOWNLOADS` (containing `libatrac9` and `magic_enum`).
 `build.rs` runs offline: missing inputs fail with a dependency-preparation
 diagnostic. It never installs packages, fetches sources or runs Cargo.

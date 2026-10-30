@@ -1,5 +1,6 @@
 use shinki_emu_build::{
-    configure_cmake, generate_import_library, write_core_build_manifest, BuildAsset, CoreBuildManifest,
+    configure_cmake, generate_import_library, link_apple_static_core, native_vcpkg_installation,
+    write_core_build_manifest, BuildAsset, CoreBuildManifest,
 };
 use std::{
     env,
@@ -52,7 +53,7 @@ fn build() -> Result<()> {
     for name in [
         "SHINKI_EMU_NATIVE_DOWNLOADS",
         "VCPKG_ROOT",
-        "SHINKI_EMU_VCPKG_INSTALLED",
+        "SHINKI_EMU_NATIVE_VCPKG_ROOT",
         "SHINKI_EMU_VCPKG_TRIPLET",
         "SHINKI_EMU_FFMPEG_INSTALLED",
         "NUM_JOBS",
@@ -91,7 +92,7 @@ fn build() -> Result<()> {
     let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
     let source = std::path::absolute(adapter.parent().ok_or("adapter must be in the Impacto checkout")?)?;
     let vcpkg = required_dir("VCPKG_ROOT")?;
-    let installed = required_dir("SHINKI_EMU_VCPKG_INSTALLED")?;
+    let installed = native_vcpkg_installation("impacto")?;
     let triplet = env::var("SHINKI_EMU_VCPKG_TRIPLET")?;
     let expected_triplet = match target.as_str() {
         "x86_64-pc-windows-msvc" => "x64-windows",
@@ -170,6 +171,7 @@ fn build() -> Result<()> {
             "CMAKE_TOOLCHAIN_FILE".into(),
             toolchain.to_string_lossy().into_owned(),
         ),
+        ("VCPKG_INSTALLED_DIR".into(), installed.to_string_lossy().into_owned()),
         ("IMPACTO_SHINKI_EMU".into(), "ON".into()),
         (
             "IMPACTO_SHINKI_EMU_STATIC".into(),
@@ -218,8 +220,11 @@ fn build() -> Result<()> {
         }
     }
     println!("cargo:rustc-link-search=native={}", stage.join("lib").display());
-    if cfg!(feature = "static") {
+    let library = if cfg!(feature = "static") && target.contains("apple") {
+        link_apple_static_core("impacto", &native, &[installed.join(&triplet)])?
+    } else if cfg!(feature = "static") {
         println!("cargo:rustc-link-lib=static=shinki_emu_impacto");
+        library
     } else {
         println!("cargo:rustc-link-search=native={}", stage.display());
         if target == "x86_64-pc-windows-msvc" {
@@ -230,9 +235,12 @@ fn build() -> Result<()> {
             );
         }
         println!("cargo:rustc-link-lib=dylib=shinki_emu_impacto");
-    }
+        library
+    };
 
-    let mut manifest = CoreBuildManifest::new("impacto", "native-shared")?;
+    let mut manifest = CoreBuildManifest::new(
+        "impacto", if cfg!(feature = "static") { "native-static" } else { "native-shared" },
+    )?;
     manifest.native_library = Some(library);
     manifest.resources.push(BuildAsset {
         source: resources,
