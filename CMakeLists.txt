@@ -1448,11 +1448,15 @@ elseif (IMPACTO_SHINKI_EMU)
         set_property(TARGET impacto PROPERTY INSTALL_RPATH "@loader_path/lib")
     endif()
     LIST(APPEND post_exclude_regexes "^/lib" "^/usr" "^/bin" "libvulkan\\.so(\\..*)?")
-    install(TARGETS impacto atrac9
+    install(TARGETS impacto
         RUNTIME_DEPENDENCY_SET impacto_runtime_deps
         RUNTIME DESTINATION .
         LIBRARY DESTINATION .
         FRAMEWORK DESTINATION .
+    )
+    install(TARGETS atrac9
+        LIBRARY DESTINATION ./lib
+        FRAMEWORK DESTINATION ./lib
     )
     install(RUNTIME_DEPENDENCY_SET impacto_runtime_deps
         POST_EXCLUDE_REGEXES ${post_exclude_regexes}
