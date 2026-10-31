@@ -49,6 +49,11 @@ license texts. CMake uses this fixed copy by default. An explicit
 `SHINKI_EMU_ABI_INCLUDE_DIR` override supports local integration; no second
 interface or generated-header edits are maintained.
 
+The C++20 adapter constructs filesystem paths from UTF-8 `char8_t` views,
+including configured game/save roots and resource lookups. This preserves
+Unicode paths on Windows without the deprecated `std::filesystem::u8path`
+API rejected by GCC 13 warning-as-error builds.
+
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
 OpenAL audio and FFmpeg players. It renders into a hidden hardware GL context,
 reads the final 1920x1080 backbuffer and publishes immutable RGBA CPU leases.
