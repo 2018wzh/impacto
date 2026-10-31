@@ -816,7 +816,8 @@ add_library(minilua STATIC vendor/minilua/minilua_impl.c)
 target_include_directories(minilua PUBLIC vendor)
 if(IMPACTO_SHINKI_EMU_STATIC)
     # The Manager also links Luau. Namespace this private Lua implementation
-    # at compile time so neither VM can resolve calls to the other's ABI.
+    # at compile time so neither VM resolves calls or data to the other's ABI.
+    target_compile_definitions(minilua PUBLIC lua_ident=shinki_impacto_lua_ident)
     file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/minilua/minilua.h"
          minilua_exports REGEX "^(LUA_API|LUALIB_API|LUAMOD_API).*[()]lua")
     foreach(declaration IN LISTS minilua_exports)
