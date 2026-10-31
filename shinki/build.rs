@@ -193,6 +193,25 @@ fn build() -> Result<()> {
     ];
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
+    if target == "x86_64-unknown-linux-gnu" && !cfg!(feature = "static") {
+        // CMake installs SONAME links; packages publish ordinary sibling files.
+        let root = fs::canonicalize(&stage)?;
+        for entry in fs::read_dir(&stage)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_symlink() {
+                continue;
+            }
+            let source = fs::canonicalize(entry.path())?;
+            if !source.starts_with(&root) || !source.is_file() {
+                return Err(format!(
+                    "native runtime link escapes the install tree: {}",
+                    entry.path().display()
+                ).into());
+            }
+            fs::remove_file(entry.path())?;
+            fs::copy(source, entry.path())?;
+        }
+    }
     let library = if cfg!(feature = "static") {
         let name = if target == "x86_64-pc-windows-msvc" {
             "shinki_emu_impacto.lib"

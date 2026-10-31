@@ -54,7 +54,8 @@ including configured game/save roots and resource lookups. This preserves
 Unicode paths on Windows without the deprecated `std::filesystem::u8path`
 API rejected by GCC 13 warning-as-error builds.
 The Linux shared-core install keeps ATRAC9 and redistributable shared libraries
-beside the core with an `$ORIGIN` runtime path, matching the portable package.
+beside the core with an `$ORIGIN` runtime path. The build helper materializes
+in-tree SONAME links as ordinary files for the portable package.
 
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
 OpenAL audio and FFmpeg players. It renders into a hidden hardware GL context,
