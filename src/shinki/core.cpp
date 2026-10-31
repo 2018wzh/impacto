@@ -207,10 +207,14 @@ void Lua(std::string const& code) {
   if (luaL_dostring(Profile::LuaState, code.c_str()))
     throw std::runtime_error(lua_tostring(Profile::LuaState, -1));
 }
+fs::path Utf8Path(std::string_view value) {
+  return fs::path(std::u8string_view(
+      reinterpret_cast<char8_t const*>(value.data()), value.size()));
+}
 fs::path Absolute(std::string const& value) {
   if (value.empty())
     throw std::invalid_argument("A path configuration is required");
-  return fs::weakly_canonical(fs::absolute(fs::u8path(value)));
+  return fs::weakly_canonical(fs::absolute(Utf8Path(value)));
 }
 bool Within(fs::path const& child, fs::path const& parent) {
   auto relative = child.lexically_relative(parent);
@@ -1009,7 +1013,7 @@ bool IsClosing() { return Closing; }
 std::string ResolveResource(std::string const& path) {
   if (!NativeSession) return path;
   CheckCancellation();
-  fs::path p = fs::u8path(path);
+  fs::path p = Utf8Path(path);
   if (p.is_absolute()) return path;
   p = p.lexically_normal();
   auto first = p.begin();
