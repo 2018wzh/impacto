@@ -951,6 +951,11 @@ list(APPEND Impacto_Include_Dirs ${CMAKE_CURRENT_SOURCE_DIR}/vendor/include)
 if (NOT DEFINED IMPACTO_DISABLE_OPENGL)
     list(APPEND Impacto_Include_Dirs ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include)
 
+    if(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        # Desktop GL must come from the SDK framework, not an installed XQuartz.
+        find_library(Impacto_OpenGL_Framework NAMES OpenGL REQUIRED)
+        list(APPEND Impacto_Libs "${Impacto_OpenGL_Framework}")
+    else()
     if (ANDROID OR NX)
         set(OpenGL_Libs
             OpenGL::GLES3
@@ -972,6 +977,7 @@ if (NOT DEFINED IMPACTO_DISABLE_OPENGL)
     list(APPEND Impacto_Libs
         ${OpenGL_Libs}
     )
+    endif()
 endif ()
 
 

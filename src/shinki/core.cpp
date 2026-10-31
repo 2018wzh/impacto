@@ -209,14 +209,8 @@ void Lua(std::string const& code) {
     throw std::runtime_error(lua_tostring(Profile::LuaState, -1));
 }
 fs::path Utf8Path(std::string_view value) {
-#ifdef _WIN32
-  fs::path::string_type native;
-  native.reserve(value.size());
-  utf8::utf8to16(value.begin(), value.end(), std::back_inserter(native));
-  return fs::path(std::move(native));
-#else
-  return fs::path(value);
-#endif
+  return fs::path(std::u8string_view(
+      reinterpret_cast<char8_t const*>(value.data()), value.size()));
 }
 fs::path Absolute(std::string const& value) {
   if (value.empty())
