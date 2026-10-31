@@ -133,6 +133,21 @@ closure, plus the corresponding source and relinking materials required by
 the LGPL components listed in `THIRDPARTY.md`. Successful compilation alone
 does not clear those distribution requirements.
 
+### Linux runtime installation
+
+The Linux shared core and its runtime dependency closure install as siblings,
+with the core's loader path set to `$ORIGIN`. Before writing the build manifest,
+the adapter materializes installed SONAME links as regular files with identical
+library bytes. Link resolution stays inside that native install root, rejects
+parent traversal, dangling links and special files, and follows at most 32 links.
+The package reader still rejects linked inputs. macOS retains its `lib/`
+dependency layout; Windows and static Android/Apple installation are unchanged.
+
+The focused filesystem regressions run without configuring native dependencies:
+`rustc --edition=2024 --test shinki/linux_runtime.rs -o /tmp/impacto-linux-runtime-tests`
+followed by `/tmp/impacto-linux-runtime-tests`.
+
+
 ### Typed configuration and acceptance
 
 * `profile`: enum, currently exactly `cc`.

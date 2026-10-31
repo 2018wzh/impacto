@@ -11,6 +11,8 @@ use std::{
 
 type Result<T, E = Box<dyn Error>> = std::result::Result<T, E>;
 
+mod linux_runtime;
+
 fn required_dir(name: &str) -> Result<PathBuf> {
     let path = PathBuf::from(env::var_os(name).ok_or_else(|| {
         format!("{name} is required; run cargo xtask deps for the selected Impacto target")
@@ -91,6 +93,7 @@ fn build() -> Result<()> {
     unsafe { env::set_var("NUM_JOBS", jobs.to_string()) };
 
     let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("CARGO_MANIFEST_DIR is required")?);
+    println!("cargo:rerun-if-changed={}", adapter.join("linux_runtime.rs").display());
     let source = std::path::absolute(adapter.parent().ok_or("adapter must be in the Impacto checkout")?)?;
     let vcpkg = required_dir("VCPKG_ROOT")?;
     let installed = native_vcpkg_installation("impacto")?;
@@ -217,6 +220,9 @@ fn build() -> Result<()> {
     }
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
+    if target == "x86_64-unknown-linux-gnu" && !cfg!(feature = "static") {
+        linux_runtime::materialize_runtime(&stage)?;
+    }
     let library = if cfg!(feature = "static") {
         let name = if target == "x86_64-pc-windows-msvc" {
             "shinki_emu_impacto.lib"
