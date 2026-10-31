@@ -56,6 +56,7 @@ fn build() -> Result<()> {
         "SHINKI_EMU_NATIVE_VCPKG_ROOT",
         "SHINKI_EMU_VCPKG_TRIPLET",
         "SHINKI_EMU_FFMPEG_INSTALLED",
+        "ANDROID_NDK_HOME",
         "NUM_JOBS",
         "PROFILE",
         "HOST",
@@ -166,7 +167,7 @@ fn build() -> Result<()> {
     copy_tree(&atrac_source, &atrac)?;
     fs::copy(atrac_patch, atrac.join("CMakeLists.txt"))?;
 
-    let definitions = vec![
+    let mut definitions = vec![
         (
             "CMAKE_TOOLCHAIN_FILE".into(),
             toolchain.to_string_lossy().into_owned(),
@@ -193,6 +194,27 @@ fn build() -> Result<()> {
         ("CMAKE_INSTALL_LIBDIR".into(), "lib".into()),
         ("CMAKE_INSTALL_INCLUDEDIR".into(), "include".into()),
     ];
+    if target.ends_with("-linux-android") {
+        let ndk = required_dir("ANDROID_NDK_HOME")?;
+        let android_toolchain = ndk.join("build/cmake/android.toolchain.cmake");
+        require_file(&android_toolchain)?;
+        println!("cargo:rerun-if-changed={}", android_toolchain.display());
+        let abi = match target.as_str() {
+            "aarch64-linux-android" => "arm64-v8a",
+            "x86_64-linux-android" => "x86_64",
+            _ => unreachable!(),
+        };
+        // vcpkg remains the primary toolchain so its target package wrappers
+        // are available. Chainload the NDK before CMake selects any compiler.
+        definitions.extend([
+            ("VCPKG_CHAINLOAD_TOOLCHAIN_FILE".into(), android_toolchain.to_string_lossy().into_owned()),
+            ("VCPKG_TARGET_TRIPLET".into(), triplet.clone()),
+            ("ANDROID_ABI".into(), abi.into()),
+            ("ANDROID_PLATFORM".into(), "android-28".into()),
+            ("ANDROID_STL".into(), "c++_shared".into()),
+            ("CMAKE_POSITION_INDEPENDENT_CODE".into(), "ON".into()),
+        ]);
+    }
     let native = configure_cmake(&source, &definitions, &["install"])?;
     let stage = native.join("install");
     let library = if cfg!(feature = "static") {

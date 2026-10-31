@@ -55,6 +55,8 @@ The Cargo `static` feature builds a static adapter and codec archive, suppresses
 
 Android static builds install the complete in-tree archive set and propagate the target vcpkg/pkg-config link closure to Cargo. The bundled Lua 5.4 public entry points and `lua_ident` data symbol are prefixed with `shinki_impacto_` in static builds so the Manager's Luau ABI remains independent. Native dependency installs use a separate `installed-<triplet>` tree for each ABI. The GLib overlay carries the Windows-host Android `gdb_install_dir` fix from the KiriKiri2 fork. Android resources must be supplied through `resources_root`, pointing to the Manager's extracted `cores/impacto/Resources` directory; the adapter does not treat APK assets as filesystem paths.
 
+The Android adapter chainloads the NDK CMake toolchain through vcpkg before compiler discovery, selecting `arm64-v8a` or `x86_64` from the Cargo target, API 28 and `c++_shared`. `ANDROID_NDK_HOME` must point to the provisioned NDK; host C/C++ compilers and desktop OpenGL are not Android build inputs.
+
 The core worker owns the original SC3 VM, native menus, OpenGL renderer,
 OpenAL audio and FFmpeg players. It renders into a hidden hardware GL context,
 reads the final 1920x1080 backbuffer and publishes immutable RGBA CPU leases.
