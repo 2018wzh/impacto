@@ -814,6 +814,9 @@ target_include_directories(clHCA PUBLIC vendor/clHCA)
 
 add_library(minilua STATIC vendor/minilua/minilua_impl.c)
 target_include_directories(minilua PUBLIC vendor)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_compile_definitions(minilua PUBLIC LUA_USE_IOS)
+endif()
 
 add_library(pcg STATIC vendor/pcg/src/pcg_basic.c)
 target_include_directories(pcg PUBLIC vendor/pcg/include)

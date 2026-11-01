@@ -53,6 +53,7 @@ Apple core builds retain the `shinki_emu_impacto` library identity instead of th
 Adapter paths are decoded explicitly as UTF-8 using C++20 `char8_t` views, including Windows paths; the adapter does not use the deprecated `filesystem::u8path` API.
 macOS links the SDK's OpenGL framework explicitly, keeping XQuartz libraries out of relocatable core packages.
 iOS links the selected SDK's OpenGLES framework instead of desktop OpenGL or EGL. Its SDL context uses the existing native GLES renderer and GLSL ES 3.00 shaders with an OpenGL ES 3.0 request; desktop and Android context selection is unchanged.
+The private minilua build selects its upstream `LUA_USE_IOS` platform branch on iOS, rather than the macOS branch's unavailable `system()` call; the original interpreter and iOS library behavior remain in use.
 
 The Cargo `static` feature builds a static adapter and codec archive, suppresses the generic dynamic query export, and records `native-static` plus runtime resources in `core-build.json`. Apple static builds use the shared native archive/link-closure helper. iOS resources are read from the Manager bundle's `cores/impacto/Resources`; macOS dylibs resolve their adjacent `Resources` directory.
 
