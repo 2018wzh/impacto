@@ -52,6 +52,7 @@ interface or generated-header edits are maintained.
 Apple core builds retain the `shinki_emu_impacto` library identity instead of the standalone app's `Impacto` bundle name. Static archives use CMake's platform archive prefix (`libshinki_emu_impacto.a` on Apple); shared adapters keep their prefix-free names. Explicit Xcode/vcpkg deployment targets take precedence over the standalone macOS default. The native adapter already accepts both macOS architectures and all three iOS targets; platform acceptance still requires the ShinkiEMU build, packaging and Manager embedding gates.
 Adapter paths are decoded explicitly as UTF-8 using C++20 `char8_t` views, including Windows paths; the adapter does not use the deprecated `filesystem::u8path` API.
 macOS links the SDK's OpenGL framework explicitly, keeping XQuartz libraries out of relocatable core packages.
+iOS links the selected SDK's OpenGLES framework instead of desktop OpenGL or EGL. Its SDL context uses the existing native GLES renderer and GLSL ES 3.00 shaders with an OpenGL ES 3.0 request; desktop and Android context selection is unchanged.
 
 The Cargo `static` feature builds a static adapter and codec archive, suppresses the generic dynamic query export, and records `native-static` plus runtime resources in `core-build.json`. Apple static builds use the shared native archive/link-closure helper. iOS resources are read from the Manager bundle's `cores/impacto/Resources`; macOS dylibs resolve their adjacent `Resources` directory.
 

@@ -95,7 +95,11 @@ void GLWindow::TryCreateGL(GraphicsApi api) {
       // Emscripten's EGL implementation fails when you ask it for GLES 3.2,
       // though that is what it gives you when building for WebGL 2...
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+#if defined(SDL_PLATFORM_IOS)
+      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#endif
       SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1");
 #endif
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
@@ -140,6 +144,9 @@ void GLWindow::Init() {
     return;
   }
 
+#if defined(SDL_PLATFORM_IOS)
+  TryCreateGL(GfxApi_ForceNativeGLES);
+#else
   switch (GraphicsApiHint) {
     case GfxApi_GL:
       TryCreateGL(GfxApi_GL);
@@ -157,6 +164,7 @@ void GLWindow::Init() {
       TryCreateGL(GfxApi_GL);
       break;
   }
+#endif
 
   if (GLContext == NULL) {
     ImpLog(LogLevel::Fatal, LogChannel::General,
